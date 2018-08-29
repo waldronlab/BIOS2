@@ -1,0 +1,557 @@
+---
+title: "BIOS 621/821 Session 1"
+author: "Levi Waldron"
+output: beamer_presentation
+---
+
+Welcome and outline - session 1
+========================================================
+
+* syllabus review
+* software usage
+* in-person / online course format
+* multiple regression
+    + continuous & categorical predictors
+    + interactions
+    + ANOVA tables
+    + Model formulae
+* introduction to R
+
+A bit about me - research interests
+==============
+* High-dimensional statistics (more variables than observations)
+* Predictive modeling
+* Cancer genomics
+* Metagenomic profiling of the human microbiome
+* HIV treatment effectiveness
+* http://www.waldronlab.org ----- http://waldronlab.github.io
+
+Some of my activities that may interest you
+===========================================
+* "Statistical Learning" book club and data competitions:
+    + https://groups.google.com/forum/#!forum/stat_learning
+* Research opportunities available
+
+Multiple Linear Regression Model (sec. 4.2)
+========================================================
+Systematic part of model:
+
+$$
+E[y|x] = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + ... + \beta_p x_p
+$$
+
+- $E[y|x]$ is the expected value of $y$ given $x$
+- $y$ is the outcome, response, or dependent variable
+- $x$ is the vector of predictors / independent variables 
+- $x_p$ are the individual predictors or independent variables
+- $\beta_p$ are the regression coefficients
+
+Multiple Linear Regression Model (cont'd)
+========================================================
+Random part of model:
+
+$y_i = E[y_i|x_i] + \epsilon_i$
+
+$y_i = \beta_0 + \beta_1 x_{1i} + \beta_2 x_{2i} + ... + \beta_p x_{pi} + \epsilon_i$
+
+- $x_{ji}$ is the value of predictor $x_j$ for observation $i$
+
+Assumption: $\epsilon_i \stackrel{iid}{\sim} N(0, \sigma_\epsilon^2)$
+
+* Normal distribution
+* Mean zero at every value of predictors
+* Constant variance at every value of predictors
+* Values that are statistically independent
+
+Continuous predictors
+========================================================
+* **Coding:** as-is, or may be scaled to unit variance (which results in _adjusted_ regression coefficients)
+* **Interpretation for linear regression:** An increase of one unit of the predictor results in this much difference in the continuous outcome variable
+    + *additive model*
+
+Binary predictors (2 levels)
+========================================================
+* **Coding:** indicator or dummy variable (0-1 coding)
+* **Interpretation for linear regression:** the increase or decrease in average outcome levels in the group coded “1”, compared to the reference category (“0”)
+   + _e.g._ $E(y|x) = \beta_0 + \beta_1 x$ 
+   + where x={ 1 if male, 0 if female }
+
+Multilevel Categorical Predictors (Ordinal or Nominal)
+========================================================
+* **Coding:** $K-1$ dummy variables for $K$-level categorical variables *
+* **Interpretation for linear regression:** as above, the comparisons are done with respect to the reference category
+* Testing significance of multilevel categorical predictor: partial F-test, a.k.a. nested ANOVA
+
+\small
+&#42; STATA and R code dummy variables automatically, behind-the-scenes
+
+Inference from multiple linear regression
+=========================================
+
+* Coefficients are t-distributed when assumptions are correct
+* Variance in the estimates of each coefficient can be calculated
+* The t-test of the null hypothesis $H_0: \beta_1 = 0$ and from confidence intervals tests whether $x_1$ predicts $y$, *holding other predictors constant*
+    + often used in causal inference to control for confounding: see section 4.4
+    
+Interaction (effect modification)
+========================================================
+Interaction is modeled as the product of two covariates:
+$$
+E[y|x] = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \beta_{12} x_1*x_2
+$$
+
+
+Interaction (effect modification)
+========================================================
+
+![Interaction between coffee and time of day on performance](coffee_interaction.jpg)
+  
+Image credit: http://personal.stevens.edu/~ysakamot/
+
+ANOVA table
+========================================================
+
+Source of Variation | Sum Sq | Deg Fr | Mean Sq | F  
+------------------- | ------ | -- | ------- | --  
+Model | MSS | k | MSS/k | (MSS/k)/MSE  
+Residual | RSS | n-(k-1) | RSS/(n-k-1) |  
+Total | TSS | n-1 | |   
+
+* $k$ = Model degrees of freedom = coefficients - 1
+* $n$ = Number of observations
+* **F** is F-distributed with $k$ numerator and $n-(k-1)$ denominator degrees of freedom
+
+Regression in R: model formulae
+========================================================
+
+[Model formulae tutorial](http://ww2.coastal.edu/kingw/statistics/R-tutorials/formulae.html)
+
+* regression functions in R such as `aov()`, `lm()`, `glm()`, and `coxph()` use a "model formula" interface.
+* The formula determines the model that will be built (and tested) by the R procedure. The basic format is:
+
+> response variable ~ explanatory variables
+
+* The tilde means "is modeled by" or "is modeled as a function of." 
+
+Model formulae (cont'd)
+========================================================
+
+Model formula for simple linear regression: 
+
+> y ~ x
+
+* where "x" is the explanatory (independent) variable
+* "y" is the response (dependent) variable. 
+
+Model formulae (cont'd)
+========================================================
+
+Additional explanatory variables would be added as follows: 
+
+> y ~ x + z
+
+Note that "+" does not have its usual meaning, which would be achieved by:
+
+> y ~ I(x + z)
+
+Types of standard linear models
+========================================================
+
+```
+lm( y ~ u + v)
+```
+`u` and `v` factors: **ANOVA**  
+`u` and `v` numeric: **multiple regression**  
+one factor, one numeric: **ANCOVA**
+
+Model formulae (cont'd)
+========================================================
+
+symbol  | example | meaning  
+------- | ------- | --------  
++ | + x	| include this variable  
+-	| - x	| delete this variable  
+:	| x : z	| include the interaction  
+*	| x * z	| include these variables and their interactions  
+/	| x / z	| nesting: include z nested within x  
+&#124;	| x &#124; z	| conditioning: include x given z  
+^	| (u + v + w)^3	| include these variables and 
+&nbsp;  | &nbsp; | all interactions up to three way  
+1 | -1 | intercept: delete the intercept  
+
+Model formulae (cont'd)
+========================================================
+
+How to interpret the following model formulae?
+
+y ~ u + v + w + u:v + u:w + v:w  
+y ~ u * v * w - u:v:w  
+y ~ (u + v + w)^2  
+
+Model formulae (cont'd)
+========================================================
+
+How to interpret the following model formulae?
+
+> y ~ u + v + w + u:v + u:w + v:w + u:v:w  
+> y ~ u * v * w  
+> y ~ (u + v + w)^3  
+
+
+Introduction to the R language
+========================================================
+
+* `5 + 2  #addition`
+* `5 - 2  #subtraction`
+* `5 * 2  #multiplication`
+* `5 / 2  #division`
+* `5 ^ 2  #exponentiation`
+* `5 ** 2 #exponentiation`
+* `5 %% 2 #modulus (a.k.a. remainder)`
+
+Logic
+========================================================
+
+- `5 < x  #less than`
+- `5 <= x #less than or equal to`
+- `5 > x  #greater than`
+- `5 >= x #greater than or equal to`
+- `5 == x #equal to`
+- `5 != x #not equal to`
+- `!x     #logical NOT`
+- `True || False  #stepwise logical OR`
+- `True && False  #stepwise logical AND`
+
+Storing Data: The Rules
+========================================================
+
+* Letters, numbers, dots, underscores
+* Must start with a letter or a dot not followed by a number
+* No reserve words, No spaces
+
+```{r}
+x <- 5
+x * 2
+x <- x + 1
+y <- 4
+x * y
+```
+
+Basic Data Types
+========================================================
+* numeric (set seed to sync random number generator):
+```{r}
+set.seed(1)
+rnorm(5)
+```
+* integer:
+```{r}
+1:5
+sample( 1:5 )
+```
+
+Basic Data Types
+========================================================
+* character:
+```{r}
+c("yes", "no")
+```
+* factor (play with this to show character/integer properties):
+```{r}
+factor(c("yes", "no"))
+```
+
+Basic Data Types
+========================================================
+* ordered factor:
+```{r}
+factor(c("good", "very good", "poor"), 
+       levels=c("poor", "good", "very good"), 
+       ordered=TRUE)
+```
+* logical:
+```{r}
+1:5 %in% 4:5
+```
+
+- Missing Values and others - **IMPORTANT**
+```{r}
+c(NA, NaN, -Inf, Inf)
+```
+
+`class()` to find the class of a variable.
+
+Vectors Must Be of One Data Mode
+========================================================
+```{r}
+c( 1, "2", FALSE)
+c( 1, FALSE )
+```
+
+Selecting Vector Elements
+========================================================
+- One element
+```{r}
+x <- 1:4
+x[ 2 ]
+```
+- A slice of a vector
+```{r}
+x <- 1:10
+x[ 4:7 ]
+```
+
+Selecting Vector Elements
+========================================================
+- Multiple elements ( not contiguous )
+```{r}
+x <- c( "a", "b", "c", "d", "e", "f" )
+x[ c(5,3,1) ]
+```
+- Removing elements
+```{r}
+x[ -1 ]
+x[-1:-2]
+```
+
+Selecting Vector Elements
+========================================================
+- Using logical vector
+```{r}
+x <- 1:10
+y <- x%%2 == 0
+x[y]
+```
+
+2-Dimensional Vectors are Matrices
+========================================================
+```{r}
+matrix( 1:20, nrow = 5, ncol = 4 )
+```
+
+Indexing Matrices
+========================================================
+- matrix[ r, c ]
+```{r}
+boring.matrix <- matrix( 1:20, nrow = 5, ncol = 4 )
+dim( boring.matrix )
+boring.matrix[ ,1 ]
+boring.matrix[ 2, 1 ]
+boring.matrix[ 2, ]
+```
+
+Indexing Matrices
+========================================================
+```{r}
+boring.matrix
+boring.matrix[ boring.matrix[ ,1 ] ==3,]
+```
+
+Matrix Operations
+========================================================
+- Transpose
+```{r}
+boring.matrix <- matrix(1:9, nrow = 3)
+boring.matrix
+t(boring.matrix)
+```
+
+Matrix Operations (cont'd)
+========================================================
+- Adding
+```{r}
+boring.matrix + 1
+boring.matrix + 1:3
+```
+
+Matrix Operations (cont'd)
+========================================================
+- Adding
+```{r}
+boring.matrix
+boring.matrix + boring.matrix
+```
+
+Matrix Operations (cont'd)
+========================================================
+- Multiplying
+```{r}
+boring.matrix * boring.matrix
+boring.matrix %*% boring.matrix
+```
+
+Naming rows and columns
+========================================================
+```{r}
+colnames(boring.matrix) <- c("col.1", "col.2", "col.3")
+rownames(boring.matrix) <- c("row.1", "row.2", "row.3")
+boring.matrix
+boring.matrix["row.1", ]
+```
+
+Lists are Filing Cabinets
+========================================================
+* e.g. if we have 5 medical measurements, 10 self-reported measurements, a sex, two parent names:
+```{r, echo = FALSE}
+measurements <- c( 1.3, 1.6, 3.2, 9.8, 10.2 )
+self.reporting <- c( 13, 6, 4, 7, 6, 5, 8, 9, 7, 4 )
+sex <- FALSE
+parents <- c( "Parent1.name", "Parent2.name" )
+```
+```{r}
+my.person <- list( measurements, self.reporting, 
+                   sex, parents)
+my.person
+```
+
+Lists are Filing Cabinets
+========================================================
+* Single bracket accessing
+```{r}
+my.person[1:2]
+```
+* Double bracket accessing
+```{r}
+my.person[[1]]
+```
+
+Lists are Filing Cabinets
+========================================================
+```{r}
+my.person <- list( measure = measurements, 
+                   self.measure = self.reporting, 
+                   s = sex, 
+                   parents = parents )
+my.person
+my.person$parents
+```
+
+The data.frame object
+========================================================
+* a data.frame is:
+  + a matrix with columns of potentially different data types, and
+  + a `list` with vector elements of equal length
+
+```{r}
+x <- 11:16
+y <- seq(0,1,.2)
+z <- c( "one", "two", "three", "four", "five", "six" )
+a <- factor( z )
+```
+```{r}
+test.dataframe <- data.frame(x,y,z,a)
+```
+ 
+Accessing data.frame elements
+========================================================
+```{r}
+test.dataframe[[4]]
+test.dataframe$parents
+```
+
+Columns of a data.frame May Contain Different Data Modes
+========================================================
+
+```{r}
+class( test.dataframe[[1]] )
+class( test.dataframe[[2]] )
+class( test.dataframe[[3]] )
+class( test.dataframe[[4]] )
+```
+
+Combining Data Frames
+========================================================
+* binding columns with common row names
+```{r}
+mini.frame.one <- data.frame( "one" = 1:5 )
+mini.frame.two <- data.frame( "two" = 6:10 )
+```
+```{r}
+cbind( mini.frame.one, mini.frame.two )
+```
+Alternatively: ```c( mini.frame.one, mini.frame.two )```
+
+* rbind for binding rows ( with common column names )
+
+Updating Data Frames
+========================================================
+
+\small
+
+```{r}
+test.dataframe
+test.dataframe[[1]] = 21:26
+test.dataframe
+```
+
+Navigating Directories
+========================================================
+- Paths start at where you opened R in the terminal
+  + Home directory for RStudio
+- "/" inside a folder
+- "parent_folder/inside_folder"
+- ".." move up one
+- "../.." move up two
+- getwd()
+- setwd()
+
+Reading Tables
+========================================================
+- `read.table`
+- `read.csv`
+- `read.delim`
+
+Example: Cholesterol vs. Age
+========================================================
+
+```{r}
+chol <- read.delim("http://www.statlab.uni-heidelberg.de/data/ancova/cholesterol.data")
+summary(chol)
+```
+
+Example: Cholesterol vs. Age linear model
+========================================================
+
+\tiny
+```{r}
+fit <- lm(cholesterol ~ age * state, data=chol)
+summary(fit)
+```
+
+Example: Cholesterol vs. Age ANOVA table
+========================================================
+
+```{r}
+anova(fit)
+```
+
+
+Example: Cholesterol vs. Age diagnostic plots
+========================================================
+
+```{r}
+par(mfrow=c(2, 2))
+plot(fit)
+```
+
+Example: Cholesterol vs. Age partial F-test
+========================================================
+
+```{r}
+fit1 <- lm(cholesterol ~ state, data=chol)
+fit2 <- lm(cholesterol ~ state + age, data=chol)
+anova(fit1, fit2)
+```
+
+Example: Cholesterol vs. Age backwards selection
+========================================================
+
+\small
+```{r}
+library(MASS)
+fit <- lm(cholesterol ~ age * state, data=chol)
+step <- stepAIC(fit, direction="backward")
+```
+\small
+AIC = Akaike's Information Criterion
+
