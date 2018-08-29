@@ -24,7 +24,7 @@ A bit about me - research interests
 * Cancer genomics
 * Metagenomic profiling of the human microbiome
 * HIV treatment effectiveness
-* http://www.waldronlab.org ----- http://waldronlab.github.io
+* http://www.waldronlab.io
 
 Some of my activities that may interest you
 ===========================================
@@ -505,7 +505,7 @@ Example: Cholesterol vs. Age
 ========================================================
 
 ```{r}
-chol <- read.delim("http://www.statlab.uni-heidelberg.de/data/ancova/cholesterol.data")
+chol <- read.delim("https://raw.githubusercontent.com/waldronlab/BIOS2/master/Session1/cholesterol.tsv", row.names=NULL)
 summary(chol)
 ```
 
