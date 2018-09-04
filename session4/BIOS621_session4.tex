@@ -1,0 +1,739 @@
+\documentclass[ignorenonframetext,]{beamer}
+\setbeamertemplate{caption}[numbered]
+\setbeamertemplate{caption label separator}{: }
+\setbeamercolor{caption name}{fg=normal text.fg}
+\beamertemplatenavigationsymbolsempty
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+\else % if luatex or xelatex
+  \ifxetex
+    \usepackage{mathspec}
+  \else
+    \usepackage{fontspec}
+  \fi
+  \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
+\fi
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+% use microtype if available
+\IfFileExists{microtype.sty}{%
+\usepackage{microtype}
+\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\newif\ifbibliography
+\hypersetup{
+            pdftitle={BIOS621 Session 4 - loglinear regression part 1},
+            pdfauthor={Levi Waldron},
+            pdfborder={0 0 0},
+            breaklinks=true}
+\urlstyle{same}  % don't use monospace font for urls
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.77,0.63,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\usepackage{graphicx,grffile}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight0.8\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+
+% Prevent slide breaks in the middle of a paragraph:
+\widowpenalties 1 10000
+\raggedbottom
+
+\AtBeginPart{
+  \let\insertpartnumber\relax
+  \let\partname\relax
+  \frame{\partpage}
+}
+\AtBeginSection{
+  \ifbibliography
+  \else
+    \let\insertsectionnumber\relax
+    \let\sectionname\relax
+    \frame{\sectionpage}
+  \fi
+}
+\AtBeginSubsection{
+  \let\insertsubsectionnumber\relax
+  \let\subsectionname\relax
+  \frame{\subsectionpage}
+}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{0}
+
+\title{BIOS621 Session 4 - loglinear regression part 1}
+\author{Levi Waldron}
+\date{}
+
+\begin{document}
+\frame{\titlepage}
+
+\begin{frame}{Welcome and outline - session 4}
+
+\begin{itemize}
+\tightlist
+\item
+  brief review of GLMs
+\item
+  Motivating example for log-linear models
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Poisson regression
+  \end{itemize}
+\item
+  Checking model assumptions and fit: Residual Analysis
+\item
+  Note on collinearity
+\end{itemize}
+
+Reading: Vittinghoff textbook chapter 8.1-8.3
+
+\end{frame}
+
+\begin{frame}{Learning Objectives}
+
+\begin{itemize}
+\tightlist
+\item
+  Define log-linear models in GLM framework
+\item
+  Identify situations that motivate use of log-linear models
+\item
+  Assess model fit of log-linear models
+\item
+  Define multi-collinearity
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Components of GLM}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Random component} specifies the conditional distribution for
+  the response variable - it doesn't have to be normal but can be any
+  distribution that belongs to the ``exponential'' family of
+  distributions
+\item
+  \textbf{Systematic component} specifies linear function of predictors
+  (linear predictor)
+\item
+  \textbf{Link} {[}denoted by g(.){]} specifies the relationship between
+  the expected value of the random component and the systematic
+  component, can be linear or nonlinear
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Linear Regression as GLM}
+
+\begin{itemize}
+\item
+  \textbf{The model}:
+  \(y_i = E[y|x] + \epsilon_i = \beta_0 + \beta_1 x_{1i} + \beta_2 x_{2i} + ... + \beta_p x_{pi} + \epsilon_i\)
+\item
+  \textbf{Random component} of \(y_i\) is normally distributed:
+  \(\epsilon_i \stackrel{iid}{\sim} N(0, \sigma_\epsilon^2)\)
+\item
+  \textbf{Systematic component} (linear predictor):
+  \(\beta_0 + \beta_1 x_{1i} + \beta_2 x_{2i} + ... + \beta_p x_{pi}\)
+\item
+  \textbf{Link function} here is the \emph{identity link}:
+  \(g(E(y | x)) = E(y | x)\). We are modeling the mean directly, no
+  transformation.
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Logistic Regression as GLM}
+
+\begin{itemize}
+\item
+  \textbf{The model}: \[
+  Logit(P(x)) = log \left( \frac{P(x)}{1-P(x)} \right) = \beta_0 + \beta_1 x_{1i} + \beta_2 x_{2i} + ... + \beta_p x_{pi}
+  \]
+\item
+  \textbf{Random component}: \(y_i\) follows a Binomial distribution
+  (outcome is a binary variable)
+\item
+  \textbf{Systematic component}: linear predictor \[
+  \beta_0 + \beta_1 x_{1i} + \beta_2 x_{2i} + ... + \beta_p x_{pi}
+  \]
+\item
+  \textbf{Link function}: \emph{logit} (log of the odds that the event
+  occurs)
+\end{itemize}
+
+\[
+g(P(x)) = logit(P(x)) = log\left( \frac{P(x)}{1-P(x)} \right)
+\]
+
+\[
+P(x) = g^{-1}\left( \beta_0 + \beta_1 x_{1i} + \beta_2 x_{2i} + ... + \beta_p x_{pi}
+ \right)
+\]
+
+\end{frame}
+
+\begin{frame}{Additive vs.~Multiplicative models}
+
+\begin{itemize}
+\tightlist
+\item
+  Linear regression is an \emph{additive} model
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \emph{e.g.} for two binary variables \(\beta_1 = 1.5\),
+    \(\beta_2 = 1.5\).
+  \item
+    If \(x_1=1\) and \(x_2=1\), this adds 3.0 to \(E(y|x)\)
+  \end{itemize}
+\item
+  Logistic regression is a \emph{multiplicative} model
+
+  \begin{itemize}
+  \tightlist
+  \item
+    If \(x_1=1\) and \(x_2=1\), this adds 3.0 to \(log(\frac{P}{1-P})\)
+  \item
+    Odds-ratio \(\frac{P}{1-P}\) increases 20-fold: \(exp(1.5+1.5)\) or
+    \(exp(1.5) * exp(1.5)\)
+  \end{itemize}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Motivating example for log-linear models}
+
+\begin{itemize}
+\tightlist
+\item
+  Effectiveness of a new case-management program for depression
+
+  \begin{itemize}
+  \tightlist
+  \item
+    can the new treatment reduce the number of needed visits to the
+    emergency room, compared to standard care?
+  \end{itemize}
+\item
+  \emph{outcome}: \# of emergency room visits for each patient in the
+  year following initial treatment
+\item
+  \emph{predictors}: \emph{race} (white or nonwhite), \emph{treatment}
+  (treated or control), \emph{amount of alcohol consumption} (numerical
+  measure), \emph{drug use} (numerical measure)
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Motivating example (cont'd)}
+
+\begin{itemize}
+\tightlist
+\item
+  Statistical issues:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    about 1/3 of observations are exactly 0 (did not return to the
+    emergency room within the year)
+  \item
+    highly nonnormal and cannot be transformed to be approximately
+    normal
+  \item
+    even \(log(y_i + 1)\) transformation will have a ``lump'' at zero
+
+    \begin{itemize}
+    \tightlist
+    \item
+      over 1/2 the transformed data would have values of 0 or \(log(2)\)
+    \end{itemize}
+  \item
+    a linear regression model would give negative predictions for some
+    covariate combinations
+  \item
+    some subjects die or cannot be followed up on for a whole year
+  \end{itemize}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Motivating example (cont'd)}
+
+\begin{itemize}
+\tightlist
+\item
+  A \emph{multiplicative} model will allow us to make inference on
+  \emph{ratios} of mean emergency room usage
+\item
+  Modeling \(log\) of the \emph{mean} emergency usage ensures positive
+  means, and does not suffer from \(log(0)\) problem
+\item
+  Random component of GLM, or residuals (was
+  \(\epsilon_i \stackrel{iid}{\sim} N(0, \sigma_\epsilon^2)\) for linear
+  regression) may still not be normal, but we can choose from other
+  distributions
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Motivating example: proposed model without time}
+
+\[
+log(E[Y_i]) = \beta_0 + \beta_1 \textrm{RACE}_i + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i
+\] Or equivalently: \[
+E[Y_i] = exp \left( \beta_0 + \beta_1 \textrm{RACE}_i + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i \right)
+\] where \(E[Y_i]\) is the expected number of emergency room visits for
+patient \emph{i}.
+
+\begin{itemize}
+\tightlist
+\item
+  Important note: Modeling \(log(E[Y_i])\) is \emph{not} equivalent to
+  modeling \(E(log(Y_i))\)
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Motivating example: accounting for time of follow-up}
+
+Instead, model mean count per unit time: \[
+log(E[Y_i]/t_i) = \beta_0 + \beta_1 \textrm{RACE}_i + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i
+\] Or equivalently: \[
+log(E[Y_i]) = \beta_0 + \beta_1 \textrm{RACE}_i + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i + log(t_i)
+\]
+
+\begin{itemize}
+\tightlist
+\item
+  \(log(t_i)\) is not a covariate, it is called an \emph{offset}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Motivating example: Choice of Distribution}
+
+\begin{itemize}
+\tightlist
+\item
+  Count data are often modeled as Poisson distributed:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    mean \(\lambda\) is greater than 0
+  \item
+    variance is also \(\lambda\)
+  \item
+    Probability density
+    \(P(k, \lambda) = \frac{\lambda^k}{k!} e^{-\lambda}\)
+  \end{itemize}
+\end{itemize}
+
+\includegraphics{BIOS621_session4_files/figure-beamer/unnamed-chunk-1-1.pdf}
+
+\end{frame}
+
+\begin{frame}{Motivating example: the Poisson GLM}
+
+\begin{itemize}
+\tightlist
+\item
+  Model the number of counts per unit time as Poisson-distributed
+
+  \begin{itemize}
+  \tightlist
+  \item
+    so the expected number of counts per time is \(\lambda_i\)
+  \end{itemize}
+\end{itemize}
+
+\(E[Y_i]/t_i = \lambda_i\) \newline
+\(log(E[Y_i]/t_i) = log(\lambda_i)\) \newline
+\(log(E[Y_i]) = log(\lambda_i) + log(t_i)\) \newline
+
+Recalling the log-linear model systematic component:
+\[log(E[Y_i]) = \beta_0 + \beta_1 \textrm{RACE}_i + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i + log(t_i)\]
+
+\end{frame}
+
+\begin{frame}{Motivating example: the Poisson GLM}
+
+Then the systematic part of the GLM is: \[
+log(\lambda_i) = \beta_0 + \beta_1 \textrm{RACE}_i + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i
+\] Or alternatively: \[
+\lambda_i = exp \left( \beta_0 + \beta_1 \textrm{RACE}_i + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i \right)
+\]
+
+\end{frame}
+
+\begin{frame}{Motivating example: interpretation of coefficients}
+
+\begin{itemize}
+\tightlist
+\item
+  Suppose that \(\hat \beta_1 = -0.5\) in the fitted model, where
+  \(\textrm{RACE}_i=0\) for white and \(\textrm{RACE}_i=1\) for
+  non-white.
+\item
+  The mean rate of emergency room visits per unit time for white
+  relative to non-white, all else held equal, is estimated to be:
+\end{itemize}
+
+\[
+\frac{exp \left( \beta_0 + 0 + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i \right)}{exp \left( \beta_0 - 0.5 + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i \right)}
+\] \[
+= \frac{e^{\beta_0} e^0 e^{\beta_2 \textrm{TRT}_i} e^{\beta_3 \textrm{ALCH}_i} e^{\beta_4 \textrm{DRUG}_i}}
+{e^{\beta_0} e^{-0.5} e^{\beta_2 \textrm{TRT}_i} e^{\beta_3 \textrm{ALCH}_i} e^{\beta_4 \textrm{DRUG}_i}}
+\] \[
+= \frac{e^0}{e^{-0.5}}
+\] \[
+= e^{0.5} \approxeq 1.65
+\]
+
+\end{frame}
+
+\begin{frame}{Motivating example: interpretation of coefficients}
+
+\begin{itemize}
+\tightlist
+\item
+  If \(\hat \beta_1=-0.5\) with whites as the reference group:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    after adjustment for treatment group, alcohol and drug usage, whites
+    tend to use the emergency room at a rate 1.65 times higher than
+    non-whites.
+  \item
+    equivalently, the average rate of usage for whites is 65\% higher
+    than that for non-whites
+  \end{itemize}
+\item
+  Multiplicative rules apply for other coefficients as well, because
+  they are exponentiated to estimate the mean rate.
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]{Example by simulation}
+
+\tiny
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{simdat <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(}\DataTypeTok{race=}\KeywordTok{sample}\NormalTok{(}\KeywordTok{c}\NormalTok{(}\StringTok{"white"}\NormalTok{, }\StringTok{"non-white"}\NormalTok{), }\DataTypeTok{size=}\DecValTok{10000}\NormalTok{, }\DataTypeTok{replace=}\OtherTok{TRUE}\NormalTok{))}
+\NormalTok{simdat}\OperatorTok{$}\NormalTok{race <-}\StringTok{ }\KeywordTok{factor}\NormalTok{(simdat}\OperatorTok{$}\NormalTok{race, }\DataTypeTok{levels=}\KeywordTok{c}\NormalTok{(}\StringTok{"white"}\NormalTok{, }\StringTok{"non-white"}\NormalTok{))}
+\NormalTok{simdat}\OperatorTok{$}\NormalTok{y <-}\StringTok{ }\KeywordTok{rpois}\NormalTok{(}\DecValTok{10000}\NormalTok{, }\DataTypeTok{lambda=}\KeywordTok{ifelse}\NormalTok{(simdat}\OperatorTok{$}\NormalTok{race}\OperatorTok{==}\StringTok{"white"}\NormalTok{, }\KeywordTok{exp}\NormalTok{(}\FloatTok{3.5}\NormalTok{), }\KeywordTok{exp}\NormalTok{(}\DecValTok{3}\NormalTok{)))}
+\NormalTok{fit <-}\StringTok{ }\KeywordTok{glm}\NormalTok{(y }\OperatorTok{~}\StringTok{ }\NormalTok{race, }\DataTypeTok{data=}\NormalTok{simdat, }\DataTypeTok{family=}\KeywordTok{poisson}\NormalTok{(}\StringTok{"log"}\NormalTok{))}
+\KeywordTok{summary}\NormalTok{(fit)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Call:
+## glm(formula = y ~ race, family = poisson("log"), data = simdat)
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -3.5323  -0.7127  -0.0246   0.6616   3.5473  
+## 
+## Coefficients:
+##                Estimate Std. Error z value Pr(>|z|)    
+## (Intercept)    3.500139   0.002446  1431.0   <2e-16 ***
+## racenon-white -0.498900   0.004003  -124.6   <2e-16 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for poisson family taken to be 1)
+## 
+##     Null deviance: 26157  on 9999  degrees of freedom
+## Residual deviance: 10111  on 9998  degrees of freedom
+## AIC: 60885
+## 
+## Number of Fisher Scoring iterations: 4
+\end{verbatim}
+
+\end{frame}
+
+\begin{frame}[fragile]{Inference on deviance residuals}
+
+\begin{itemize}
+\tightlist
+\item
+  The difference in total deviance between two nested models is
+  \(\chi^2\) distributed under \(H_0\) that the more complex model is no
+  better at explaining the response.
+
+  \begin{itemize}
+  \tightlist
+  \item
+    The difference in deviance residuals is (26157 - 10111) = 16046,
+    with a difference of 1 degrees of freedom.
+  \end{itemize}
+\end{itemize}
+
+The critical threshold for rejection at p=0.05 is:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{qchisq}\NormalTok{(}\FloatTok{0.95}\NormalTok{, }\DataTypeTok{df=}\DecValTok{1}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 3.841459
+\end{verbatim}
+
+So we reject \(H_0\)
+
+\end{frame}
+
+\begin{frame}[fragile]{Inference on deviance residuals 2}
+
+\begin{itemize}
+\tightlist
+\item
+  Total residual deviance is \(\chi^2\) distributed if the model is
+  correctly specified
+
+  \begin{itemize}
+  \tightlist
+  \item
+    What is the critical value for rejecting \(H_0\) at \(p < 0.05\)
+    with a \(\chi^2\) distribution of 9998 degrees of freedom?
+  \end{itemize}
+\end{itemize}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{qchisq}\NormalTok{(}\FloatTok{0.95}\NormalTok{, }\DataTypeTok{df=}\DecValTok{9998}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 10231.73
+\end{verbatim}
+
+Here total residual deviance is 10111, so we do \emph{not} exceed the
+threshold and do not reject \(H_0\) that the model is correctly
+specified.
+
+\end{frame}
+
+\begin{frame}{Example by simulation: Deviance Residuals Plots}
+
+\includegraphics{BIOS621_session4_files/figure-beamer/unnamed-chunk-7-1.pdf}
+
+\end{frame}
+
+\begin{frame}[fragile]{Example: Risky Drug Use Behavior}
+
+\begin{itemize}
+\tightlist
+\item
+  Load the ``needle\_sharing'' dataset is available csv format
+\item
+  Outcome is \# times the drug user shared a syringe in the past month
+  (shared\_syr)
+\item
+  Predictors: sex, ethn, homeless
+\end{itemize}
+
+\small
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{needledat =}\StringTok{ }\KeywordTok{read.csv}\NormalTok{(}\StringTok{"needle_sharing.csv"}\NormalTok{)}
+\KeywordTok{summary}\NormalTok{(needledat}\OperatorTok{$}\NormalTok{shared_syr)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+##   0.000   0.000   0.000   2.976   0.000  60.000       5
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{var}\NormalTok{(needledat}\OperatorTok{$}\NormalTok{shared_syr, }\DataTypeTok{na.rm=}\OtherTok{TRUE}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 106.5978
+\end{verbatim}
+
+\end{frame}
+
+\begin{frame}{Example: Risky Drug Use Behavior}
+
+\includegraphics{BIOS621_session4_files/figure-beamer/unnamed-chunk-9-1.pdf}
+
+\begin{itemize}
+\tightlist
+\item
+  There are a \emph{lot} of zeros - Poisson model is not a good fit
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]{Risky Drug Use Behavior: fitting a Poisson model}
+
+\tiny
+
+\begin{verbatim}
+## 
+## Call:
+## glm(formula = shared_syr ~ sex + ethn + homeless, family = poisson(link = "log"), 
+##     data = needledat)
+## 
+## Deviance Residuals: 
+##    Min      1Q  Median      3Q     Max  
+## -5.057  -2.506  -2.030  -1.279  15.721  
+## 
+## Coefficients:
+##                     Estimate Std. Error z value Pr(>|z|)    
+## (Intercept)          0.72332    0.14462   5.002 5.69e-07 ***
+## sexM                -0.92480    0.12133  -7.622 2.50e-14 ***
+## sexTrans           -15.08655  773.78384  -0.019   0.9844    
+## ethnFilipino       -14.52887  510.68253  -0.028   0.9773    
+## ethnHispanic         1.46454    0.16004   9.151  < 2e-16 ***
+## ethnIndian         -14.10111  773.78385  -0.018   0.9855    
+## ethnIndian & White -15.02591  773.78384  -0.019   0.9845    
+## ethnWhite            0.06064    0.13348   0.454   0.6496    
+## ethnWhite & Hispa    0.86195    0.39872   2.162   0.0306 *  
+## homelessyes          1.28543    0.12664  10.150  < 2e-16 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for poisson family taken to be 1)
+## 
+##     Null deviance: 1621.9  on 120  degrees of freedom
+## Residual deviance: 1364.8  on 111  degrees of freedom
+##   (7 observations deleted due to missingness)
+## AIC: 1483.8
+## 
+## Number of Fisher Scoring iterations: 12
+\end{verbatim}
+
+\end{frame}
+
+\begin{frame}{Risky Drug Use Behavior: residuals plots}
+
+\includegraphics{BIOS621_session4_files/figure-beamer/unnamed-chunk-12-1.pdf}
+
+\end{frame}
+
+\begin{frame}{Multicollinearity}
+
+\begin{itemize}
+\tightlist
+\item
+  \emph{Multicollinearity} exists when two or more of the independent
+  variables in regression are moderately or highly correlated.
+\item
+  Multicollinearity implies near-linear relationship among the
+  predictors
+\item
+  The presence of near-linear dependence dramatically impacts the
+  ability to estimate regression coefficients
+\item
+  High multicollinearity results in larger standard errors for
+  regression coefficients
+
+  \begin{itemize}
+  \tightlist
+  \item
+    estimates of such regression coefficients will tend to be less
+    stable over repeated sampling
+  \end{itemize}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Concluding notes}
+
+\begin{itemize}
+\tightlist
+\item
+  Inference from log-linear models is sensitive to the choice of link
+  function (assumption on distribution of residuals)
+\item
+  We will cover other options next week for when the Poisson model
+  doesn't fit:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Variance proportional to mean, instead of equal
+  \item
+    Negative Binomial
+  \item
+    Zero Inflation
+  \end{itemize}
+\end{itemize}
+
+\end{frame}
+
+\end{document}

@@ -1,0 +1,343 @@
+
+---
+title: "Session 8 - Survival Analysis III"
+author: "Levi Waldron"
+output: beamer_presentation
+---
+
+# Welcome and outline - session 8
+
+**Learning Objectives:**
+
+* Check model assumptions and fit of the Cox model
+    + residuals analysis
+    + log-minus-log plot
+* Fit and interpret multivariate Cox models
+    + perform tests for trend
+    + predict survival for specific covariate patterns
+    + predict survival for adjusted coefficients
+
+* Explain and perform stratified analysis and its use
+* Explain time-dependent covariates and when to use them
+    
+* Vittinghoff sections 6.2-6.4
+    
+
+# Cox proportional hazards model
+
+* Cox proportional hazard regression assesses the relationship between a right-censored, time-to-event outcome and multiple predictors:
+    + categorical variables (e.g., treatment groups)
+    + continuous variables
+
+$$
+log(HR(x_i)) = log \frac{h(t|x_i)}{h_0(t)} = \beta_0 + \beta_1 x_{1i} + \beta_2 x_{2i} + ... + \beta_p x_{pi}
+$$
+
+* $HR(x_i)$ is the hazard of patient $i$ relative to baseline
+* $h(t|x_i)$ is the time-dependent hazard function $h(t)$ for patient $i$
+* $h_0(t)$ is the *baseline hazard function*, and is the negative of the slope of the $S_0(t)$, the baseline _survival_ function.
+
+* Multiplicative model
+
+# Caveats and Assumptions
+* Categories with no events
+    + can occur when the group is small or its risk is low
+    + HRs with respect to such a reference group are infinite
+    + hypothesis tests and CIs are difficult / impossible to interpret
+
+* Assumptions of Cox PH model
+    + Constant hazard ratio over time (proportional hazards)
+    + Linear association between log(HR) and predictors (log-linearity) / multiplicative relationship between hazard and predictors
+    + Independence of survival times between individuals in the sample
+
+# Residuals analysis
+* Residuals are used to investigate the lack of fit of a model to a given subject. 
+* For Cox regression, there’s no easy analog to the usual "observed minus predicted" residual
+
+\footnotesize
+```{r}
+library(pensim); set.seed(1)
+mydat <- create.data(nvars=c(1, 1), nsamples=500, 
+    cors=c(0, 0), associations=c(0.5, 0.5), 
+    firstonly=c(TRUE, TRUE), censoring=c(0, 8.5))$data
+```
+
+```{r, echo=TRUE}
+## Rename variables of simulated data, and make one variable categorical.
+colnames(mydat)[1:2] <- c("Var1", "Var2")
+mydat$Var1 <- cut(mydat$Var1, breaks=2, labels=c("low", "high"))
+mydat$time <- ceiling(mydat$time*1000)
+```
+
+# Simulated data to test residuals methods
+
+\footnotesize
+
+```{r}
+summary(mydat)
+```
+
+# Kaplan-Meier plot of simulated data, stratified by Var1
+
+```{r, echo=FALSE}
+##Do Kaplan-Meier plot
+par(cex=1.5)
+library(survival)
+library(survminer)
+kmfit <- survfit(Surv(time, cens)~Var1, data=mydat)
+ggsurvplot(kmfit, risk.table = TRUE, linetype=1:2)
+```
+
+# Martingale residuals
+
+* censoring variable $c_i$ (1 if event, 0 if censored) minus the estimated cumulative hazard function $H(t_i, X_i, \beta_i)$ (1 - survival function)
+    + E.g., for a subject censored at 1 year ($c_i=0$), whose predicted cumulative hazard at 1 year was 30\%, Martingale = 0 - 0.30 = -0.30.
+    + E.g. for a subject who had an event at 6 months, and whose predicted cumulative hazard at 6 months was 80%, Margingale = 1 - 0.8 = 0.2.
+
+* Problem: not symmetrically distributed, even when model fits the data well
+
+# Martingale residuals in simulated data
+```{r, echo=FALSE}
+fitsim <- coxph(Surv(time, cens) ~ Var1 + Var2, data=mydat)
+par(cex=1.5)
+plot(mydat$time, resid(fitsim),
+     xlab="Time", ylab="Martingale Residuals")
+abline(h=0, lty=2)
+lines(lowess(mydat$time, resid(fitsim)), col='red')
+```
+
+# Deviance residuals in simulated data
+* Deviance residuals are scaled Martingale residuals
+* Should be more symmetrically distributed about zero?
+* Observations with large deviance residuals are poorly predicted by the model
+```{r, echo=FALSE}
+par(cex=1.5)
+plot(mydat$time, resid(fitsim, type="deviance"),
+     xlab="Time", ylab="Deviance Residuals")
+abline(h=0, lty=2)
+lines(lowess(mydat$time, resid(fitsim)),col='red')
+```
+
+# Schoenfeld residuals
+* technical definition: contribution of a covariate at each event time to the partial derivative of the log-likelihood
+* intuitive interpretation: the observed minus the expected values of the covariates at each event time.
+* a random (unsystematic) pattern across event times gives evidence the covariate effect is not changing with respect to time
+* If it is systematic, it suggests that as time passes, the covariate effect is changing.
+
+# Schoenfeld residuals for simulated data
+
+```{r, echo=FALSE}
+fitzph <- cox.zph(fitsim)
+par(mfrow=c(1,2), cex=1.5)
+plot(fitzph, var=1)
+plot(fitzph, var=2)
+```
+
+# Schoenfeld test for proportional hazards
+
+* Tests correlation between scaled Schoenfeld residuals and time
+* Equivalent to fitting a simple linear regression model with time as the predictor and residuals as the outcome
+* Parametric analog of smoothing the residuals against time using LOWESS
+* If the hazard ratio is constant, correlation should be zero.
+    + Positive values of the correlation suggest that the log-hazard ratio increases with time.
+```{r, echo=FALSE}
+fitzph
+```
+
+
+# The hazard function h(t), stratified by Var1
+
+```{r, echo=FALSE}
+par(cex=1.5)
+library(muhaz)
+hazhigh = with(mydat[mydat$Var1=="high", ], muhaz(time, cens))
+hazlow = with(mydat[mydat$Var1=="low", ], muhaz(time, cens))
+plot(hazlow, lwd=2, ylim=c(0, 0.002), xlab="Follow-up time")
+lines(hazhigh, lty=2, lwd=2, col="red")
+legend("topleft", legend=c("Var1 = low", "Var1 = high"), lty=1:2, lwd=2, col=c("black", "red"), bty='n')
+```
+
+# Log-minus-log plot
+
+```{r, echo=FALSE}
+kmfit <- survfit(Surv(time, cens) ~ Var1, data=mydat)
+ggsurvplot(kmfit, fun="cloglog")
+```
+
+# Example: Primary Biliary Cirrhosis (PBC)
+
+* Mayo Clinic trial in primary biliary cirrhosis (PBC) of the liver conducted between 1974 and 1984, n=424 patients. 
+* randomized placebo controlled trial of the drug D-penicillamine.
+    + 312 cases from RCT, plus additional 112 not from RCT.
+* Primary outcome is (censored) time to death
+
+# Kaplan-Meier plot of treatment and placebo arms
+```{r, echo=FALSE, message=FALSE}
+## Data cleaning
+pbc <- read.csv("PBC.csv", row.names=1)
+pbc.os <- pbc[!is.na(pbc$time) & !is.na(pbc$status) & !is.na(pbc$trt), ]
+pbc.os$os <- pbc.os$status==2
+pbc.os <- pbc.os[!is.na(pbc.os$status), ]
+pbc.os$arm <- factor(pbc.os$trt, levels=2:1, labels=c("placebo", "treatment"))
+pbc.os$ascites <- factor(pbc.os$ascites)
+pbc.os$hepato <- factor(pbc.os$hepato)
+pbc.os$spiders <- factor(pbc.os$spiders)
+pbc.os$edema <- factor(pbc.os$edema)
+pbc.os$stage <- factor(pbc.os$stage)
+```
+
+```{r, message=FALSE, echo=FALSE}
+##KM plot of PBC data
+par(cex=1.5)
+library(survival)
+fit <- survfit(Surv(time/365, os) ~ arm, data=pbc.os)
+survminer::ggsurvplot(fit)
+ggsurvplot(fit, risk.table = TRUE, linetype=1:2)
+```
+
+
+# Tests for trend
+
+* For ordinal variables like stage (1, 2, 3, 4)
+    + This is a test for linear / quadratic / cubic relationship between coefficients and their index
+    + Model selection by LRT or Wald Test
+
+```{r, echo=FALSE}
+par(cex=2)
+## This is a manual way to plot the trend.
+fit <- coxph(Surv(time, os) ~ stage, data=pbc.os)
+stagecoefs <- c(0, coef(fit)[c("stage2", "stage3", "stage4")])
+plot(x=1:4, y=stagecoefs, type="b", xlab="Stages 2, 3, 4 (1=ref)", 
+     ylab="Coefficient, ie ln(HR)", xlim=c(1, 4))
+## In R, just define stage as an ordered factor and tests for trend are done automatically:
+pbc.os$stageordered <- factor(pbc.os$stage, ordered=TRUE)
+fit <- coxph(Surv(time, os) ~ stageordered, data=pbc.os)
+summary(fit)  ##highly significant tests of overall fit by LRT, Wald, and logrank test.
+```
+
+# Predicted survival for specific covariate patterns
+* The Cox model is a _relative_ risk model
+    + only predicts relative risks between pairs of subjects 
+* Key is to calculate the overall $S(t)$, then multiply it by the relative hazard for the specific covariate pattern.
+* In this example we plot the baseline survival for all stages together, then for stages 1-4 separately. 
+
+# Predicted survival for specific covariate patterns
+
+```{r, echo=FALSE}
+par(cex=1.5)
+fit <- coxph(Surv(time, os) ~ stage, data=pbc.os)
+##HR for each stage, relative to overall
+HR <- predict(fit, newdata=data.frame(stage=factor(1:4)))
+plot(survfit(fit)$time, survfit(fit)$surv, type="l", xlab="Time (days)", ylab="Survival Probability")
+for (i in 1:4)
+  lines(survfit(fit)$time, (survfit(fit)$surv)^exp(HR[i]), type="l", col=i+1, lty=i+1)
+legend("bottomleft", legend=c("Overall", "Stage 1", "Stage 2", "Stage 3", "Stage 4"), col=1:5, lty=1:5, bty="n")
+```
+
+# Multivariate regression
+
+* Same coding and objectives as for `lm()` and `glm()`
+    + controlling for confounding
+    + testing for mediation
+    + testing for interaction
+
+# Multivariate regression
+
+\footnotesize
+```{r}
+fit <- coxph(Surv(time, os) ~ age + sex + edema 
+                + stage + arm, data=pbc.os)
+summary(fit)
+```
+
+# Predicted survival for adjusted coefficients
+
+* Can create Kaplan-Meier curves for crude or unadjusted coefficients
+    + Section 6.3.2.3 in Vittinghoff
+* Idea is to estimate hazard ratio in an unadjusted model:
+
+\footnotesize
+```{r}
+unadjfit <- coxph(Surv(time, os) ~ stage, data=pbc.os)
+coef(unadjfit)
+```
+
+# Predicted survival for adjusted coefficients
+
+* and in an adjusted model:
+
+\footnotesize
+```{r}
+adjfit <- coxph(Surv(time, os) ~ age + sex + edema 
+                + stage + arm, data=pbc.os)
+coef(adjfit)
+```
+
+# Predicted survival for adjusted coefficients (cont'd)
+
+* The survival function will be calculated for a "baseline" group, say stage 1, then exponentiated with the adjusted coefficient, e.g.:
+$$
+[S_{stage=1}(t)]^{exp(\beta_{stage=4})}
+$$
+
+```{r, echo=FALSE}
+par(cex=1.5)
+basefit <- survfit(unadjfit, newdata=data.frame(stage=factor(1)))
+plot(x=basefit$time, y=basefit$surv, type="l", ylim=c(0, 1), xlab="Time", ylab="Survival Probability")
+stage4unadj <- (basefit$surv)^(exp(coef(unadjfit)["stage4"]))
+stage4adj <- (basefit$surv)^(exp(coef(adjfit)["stage4"]))
+lines(x=basefit$time, y=stage4adj, col="red", lty=1, lw=2)
+lines(x=basefit$time, y=stage4unadj, col="blue", lty=3)
+legend("bottomleft", legend=c("Stage 1", "Stage 4 adjusted", "Stage 4 unadjusted"),
+       col=c("black", "red", "blue"), lw=c(1,2,1), lty=c(1,1,3))
+```
+
+# Stratification
+
+* Vittinghoff 6.3.2
+* Separates the analysis into strata
+    + must have an adequate number of events in each stratum (at least 5 to 7)
+    + can be used to adjust for variables with strong impact on survival
+    + can help solve proportional hazards violations
+    
+* Strata have different baseline hazards
+* Coefficients / Hazard Ratios are calculated within stratum then combined.
+
+# Stratification
+
+**Example - in R, strata() can be added to any model formula**
+\footnotesize
+```{r}
+mycox <- coxph(Surv(time, os) ~ trt + strata(stage), data=pbc.os)
+summary(mycox)
+```
+
+# Immortal Time Bias in observational studies
+
+* For example, Yee *et al.* reported that new statin users reported a 26% reduction in the risk of diabetes progression with one year or more of treatment relative to never-users (adjusted HR 0.74, 95% CI: 0.56 to 0.97).
+    + New users excludes those who had received a lipid lowering drug from three years before to six months after cohort entry
+* This is a surprising finding because of confounding: people whose diabetes progresses are more likely to develop cardiovascular disease, an indication for statins.
+    + would result in HR > 1
+* Why?
+
+\tiny
+
+* Yee *et al.* Statin use in type 2 diabetes mellitus is associated with a delay in starting insulin (http://onlinelibrary.wiley.com/doi/10.1111/j.1464-5491.2004.01263.x/full)
+
+# Immortal Time Bias in observational studies
+
+* Why?
+    + all person days between cohort entry and end of follow-up were **classified as treated** for those who met the statin user definition, regardless of the date on which they met this definition and as untreated for non-users
+    + thus all persons in the *treated* group are "immortal" from time 0 until the initiation of statin treatment
+    + this period of immortality makes treatment look more effective
+
+# A solution: Time-dependent covariates (TDC)
+
+**Definition: A time-dependent covariate in a Cox model is a predictor whose values may vary with time.**
+
+* A solution is treating statin prescription as a Time Dependent Covariate (TDC) (Levesque 
+*et al.*)
+* Levesque *et al.* Problem of immortal time bias in cohort studies: example using statins for preventing progression of diabetes (https://doi.org/10.1136/bmj.b5087)
+
+
+

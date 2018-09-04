@@ -1,0 +1,194 @@
+---
+title: "BIOS621 sessions 2-3 lab exercises"
+author: "Levi Waldron"
+date: "September 7-14, 2016"
+output: 
+  html_document: 
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Motivating example: contraceptive use data
+
+Load the data from http://data.princeton.edu/wws509/datasets/#cuse
+
+```{r, echo=FALSE}
+cuse <- read.table("http://data.princeton.edu/wws509/datasets/cuse.dat", header=TRUE)
+summary(cuse)
+```
+
+# Problem 1
+
+1. What is the mean fraction of women using birth control for each age group? Each education level? For women who do or don't want more children?
+     - Hint: look at the ["data wrangling" cheat sheet](https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf) functions `mutate`, `group_by`, and `summarize`.
+     
+```{r, message=FALSE}
+library(dplyr)
+cuse2 <- mutate(cuse, fracusing = using / (using + notUsing))
+cuse2 %>% group_by(age) %>% summarize(mean(fracusing))
+```
+Here the `%>%` is called a "pipe", and it sends the output of the previous function to the input of the next function. This could also have been done in one step:
+
+```{r}
+mutate(cuse, fracusing = using / (using + notUsing)) %>%
+  group_by(age) %>% 
+  summarize(mean(fracusing))
+```
+
+Here the result is not stored anywhere; if you wanted to store it in a variable called `myanswer`, you could have started the above command with `myanswer <-` or `myanswer =`.
+
+Also note that the line breaks are optional: you could put this all on one line, but breaking it up makes it more readable.
+
+Problem 2
+==============================
+
+Based on ```fit1```, write on paper the model for expected probability of using birth control? Don't forget the (inverse) logit function.
+
+```{r}
+fit1 <- glm(cbind(using, notUsing) ~ age + education + wantsMore, 
+           data=cuse, family=binomial("logit"))
+```
+
+I'm going to store the coefficients of `fit1` in a new variable `b` just to save typing when writing out the formula, and round to two decimal places:
+
+```{r}
+b <- round(coef(fit1), 2)
+```
+
+Here I'm going to take advantage of R Markdown's support for LaTeX formulae to write out the fitted regression model. I also use the \`    r 2+2 \`     syntax (the result is `r 2+2`) for putting results of R code inline, instead of writing out numbers of the coefficients. I never wrote the number "four", but you'll have to look at the .Rmd to see how I did that! Doing this in reports allows you to update them as input data changes, without having to manually re-enter or copy numbers.
+
+$P = \textit{logit}^{-1} \left( 
+   `r b["(Intercept)"]` + `r b["age25-29"]` \times \textit{age25-29} + 
+   `r b["age30-39"]` \times \textit{age30-39} +
+   `r b["age40-49"]` \times \textit{age40-49} +
+   `r b["educationlow"]` \times \textit{educationlow} +
+   `r b["wantsMoreyes"]` \times \textit{wantsMoreyes} 
+   \right)$
+
+$\textit{logit}^{-1}(x) = \frac{1}{1+e^{-x}}$
+
+Problem 3
+==========================
+Based on ```fit1```, what is the expected probability of an individual 25-29 years old, with high education, who wants more children, using birth control? Calculate it manually, and using `predict(fit1)`
+
+This can be done using the `predict()` function, using a new `data.frame` giving the values that you want to predict for:
+```{r}
+invLogit <- function(x) 1/(1+exp(-x))
+newdata=data.frame(age="25-29", education="high", wantsMore="yes")
+invLogit( predict(fit1, newdata=newdata) )
+```
+
+By default, `predict()` predicts on the original data, and taking a look, I noticed that the 7th value is the one we want to predict on:
+```{r}
+invLogit( predict(fit1)[7] )
+```
+
+If we were really doing this manually, on paper, we would just calculate the linear predictor, then use the inverse logit function. Note that education="high" is the reference group, so we don't use it here:
+
+```{r}
+invLogit( b["(Intercept)"] + b["age25-29"] + b["wantsMoreyes"] )
+```
+
+I don't *really* care, but if the remnant "(Intercept)" name there were annoying me, I would assign this to a variable then get rid of that name:
+
+```{r}
+res <- invLogit( b["(Intercept)"] + b["age25-29"] + b["wantsMoreyes"] )
+names(res) <- NULL
+res
+```
+
+Problem 4
+==========================
+
+Based on ```fit1```: Relative to women under 25 who want to have children, what is the predicted odds ratio for a woman 40-49 years old who does _not_ want to have children will be taking birth control?
+
+```{r}
+exp( coef(fit1)["age40-49"] - coef(fit1)["wantsMoreyes"])
+```
+
+Problem 5
+==========================
+
+Using a likelihood ratio test, is there evidence that a model with interactions improves on ```fit1``` (no interactions)?
+
+```{r}
+fit1.int <- glm(cbind(using, notUsing) ~ age * education * wantsMore, 
+           data=cuse, family=binomial("logit"))
+anova(fit1, fit1.int, test="LRT")
+```
+
+Problem 6
+==========================
+
+Which, if any, variables have the strongest interactions? I use the "stargazer" package here which is extremely flexible for showing regression results from all kinds of models, capable of comparing multiple models or multiple dependent variables in the same table, and providing formatting customized to numerous journal styles.
+
+We see here that the strongest interaction coeffient is for `age30-39:wantsMoreyes`. It is statistically significant and negative (`r round(coef(fit1.int)["age30-39:wantsMoreyes"], 2)`). It appears that being 30-39 years old and wanting more children has a multiplicative effect against using birth control, moreso than expected based on the age or wanting more children alone. 
+
+```{r, echo=FALSE, results="asis", message=FALSE}
+library(stargazer)
+stargazer(fit1, fit1.int, type="html", 
+          dep.var.caption = " ",  #Otherwise the default is "Dependent Variable:"
+          dep.var.labels = "Outcome: Using Birth Control",
+          digits = 2,  #show 2 digits
+          column.labels = c("No Interaction", "With Interactions"),
+          ci=c(TRUE, TRUE), #show confidence intervals
+          single.row=TRUE, #put results on a single line
+          report="vc*s")  #report the variable name, coefficient with significance asterisks, and standard error (actually replaced by confidence interval because of ci argument above)
+```
+
+Problem 7
+========================================
+
+Create a model matrix for a fit on age only, with contrasts between *every pair* of age groups. Between which age groups is the contrast significant?
+
+## semi-manually
+
+First, I'll do it manually, using the `multcomp` package and following an example from `?glht`. I'm not going to bother anymore creating pretty tables with `stargazer` though... 
+
+```{r}
+fit = glm(cbind(using, notUsing) ~ age, data=cuse, family=binomial("logit"))
+coef(fit)
+K <- rbind("25-29 - <25" = c(-1, 1, 0, 0),
+           "30-39 - <25" = c(-1, 0, 1, 0),
+           "40-49 - <25" = c(-1, 0, 0, 1),
+           "30-39 - 25-29" = c(0, -1, 1, 0),
+           "40-49 - 25-29" = c(0, -1, 0, 1),
+           "40-49 - 30-39" = c(0, 0, -1, 1))
+K
+fit.all.cont = multcomp::glht(fit, linfct=K)
+summary(fit.all.cont)
+```
+
+## Using Tukey contrasts
+
+There is an easier way if you realize that these are the "Tukey" contrasts and use the `contrMat` function from the `multcomp` package:
+
+```{r}
+K2 = multcomp::contrMat(1:4, type="Tukey")
+K2
+fit.all.cont2 = multcomp::glht(fit, linfct=K2)
+summary(fit.all.cont2)
+```
+
+We didn't get the same informative coefficient names this time, but we could have just by renaming the rows in `K2`, for example:
+
+```{r}
+rownames(K2) = rownames(K)
+K2
+summary( multcomp::glht(fit, linfct=K2) )
+```
+
+## Other contrast schemes
+
+There are plenty of canned contrast schemes provided by `multcomp::contrMat`. Note use of the `example()` function to run all examples from the `contrmat()` function. This is a great example of how there are **many** ways to analyze one particular experimental design, but that you need to know design matrices to utilize many of them. 
+
+In these examples, the first line `n <- c(10,20,30,40)` just signifies four levels, `n = 1:4` would do exactly the same thing.
+
+```{r, message=FALSE}
+library(multcomp)
+example("contrMat")
+```
+

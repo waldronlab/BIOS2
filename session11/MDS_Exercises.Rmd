@@ -1,0 +1,65 @@
+---
+title: "MDS exercises"
+author: "Levi Waldron"
+date: "March 10, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tissuesGeneExpression)
+data(tissuesGeneExpression)
+head(e)
+head(tissue)
+```
+
+From the previous "Distance and Dimension Reduction" exercise:
+```{r, cache=TRUE}
+s = svd(e - rowMeans(e))
+z = s$d*t(s$v)
+```
+
+# What is the absolute value of the correlation between the first dimension of z and the first dimension in mds?
+
+```{r}
+d = dist(t(e))
+mds = cmdscale(d)
+cor(mds[, 1], z[, 1])
+```
+
+# What is the absolute value of the correlation between the second dimension of z and the second dimension in mds?
+
+```{r}
+cor(mds[, 2], z[, 2])
+```
+
+# Which dimension of z most correlates with the outcome sampleInfo$group ?
+
+```{r}
+library(GSE5859Subset) 
+data(GSE5859Subset)
+```
+
+```{r}
+s = svd(geneExpression-rowMeans(geneExpression)) 
+z = s$d * t(s$v)
+```
+
+```{r}
+res <- apply(z, 2, function(pc) cor(pc, sampleInfo$group))
+names(res) <- 1:ncol(z)
+sort(res)
+```
+
+# What is this max correlation?
+
+```{r}
+max(res)
+```
+
+# Which dimension of z has the second highest correlation with the outcome sampleInfo$group?
+
+

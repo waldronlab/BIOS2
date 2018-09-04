@@ -1,0 +1,28 @@
+---
+title: "Session 7 PBC lab"
+author: "Levi Waldron"
+output: pdf_document
+---
+
+# Example: Primary Biliary Cirrhosis (PBC)
+
+* Mayo Clinic trial in primary biliary cirrhosis (PBC) of the liver conducted between 1974 and 1984, n=424 patients. 
+* randomized placebo controlled trial of the drug D-penicillamine.
+    + 312 cases from RCT, plus additional 112 not from RCT.
+* Primary outcome is (censored) time to death
+
+```{r}
+library(survival)
+data(pbc)
+summary(pbc)
+```
+
+# Problems
+
+1. Create a `Surv` object using variables "time" and "status", add this to the pbc dataframe
+2. Plot a KM curve for all participants using `library(survminer)` function `ggsurvplot()`. 
+3. Stratify by treatment and add a p-value to this plot (see `?ggsurvplot`). 
+4. Check on the command line whether these p-values correspond to results from a log-rank test.
+5. Perform a Cox proportional hazards regression, using the "trt" variable as a predictor.
+6. Create a log-minus-log plot to test the proportional hazards assumption.
+

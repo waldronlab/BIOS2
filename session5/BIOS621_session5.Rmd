@@ -1,0 +1,392 @@
+
+---
+title: "BIOS621 / 821 Session 5"
+author: "Levi Waldron"
+date: "loglinear regression part 2"
+output: slidy_presentation
+---
+
+Welcome and outline - session 5
+=================================================
+* Review of log-linear Poisson glm
+* Review of diagnostics and interpretation of coefficients
+* Over-dispersed models:
+    + negative binomial distribution
+* Zero-inflated models
+* Vittinghoff section 8.1-8.3
+
+Components of GLM
+========================================================
+
+* **Random component** specifies the conditional distribution for the response variable - it doesn’t have to be normal but can be any distribution that belongs to the “exponential” family of distributions
+* **Systematic component** specifies linear function of predictors (linear predictor)
+* **Link** [denoted by g(.)] specifies the relationship between the expected value of the random component and the systematic component, can be linear or nonlinear  
+
+
+Motivating example: Choice of Distribution
+=================================================
+* Count data are often modeled as Poisson distributed:
+       + mean $\lambda$ is greater than 0
+       + variance is also $\lambda$
+       + Probability density $P(k, \lambda) = \frac{\lambda^k}{k!} e^{-\lambda}$
+       
+```{r, echo=FALSE}
+##par(cex=2)  #increase size of type and axes
+plot(x=0:10, y=dpois(0:10, lambda=1), 
+     type="b", lwd=2,
+     xlab="Counts (k)", ylab="Probability density")
+lines(x=0:10, y=dpois(0:10, lambda=2), 
+      type="b", lwd=2, lty=2, pch=2)
+lines(x=0:10, dpois(0:10, lambda=4), 
+      type="b", lwd=2, lty=3, pch=3)
+legend("topright", lwd=2, lty=1:3, pch=1:3,
+       legend=c(expression(paste(lambda, "=1")),
+                expression(paste(lambda, "=2")),
+                expression(paste(lambda, "=4"))))
+```
+
+Poisson model: the GLM
+=================================================
+
+The **systematic part** of the GLM is:
+$$
+log(\lambda_i) = \beta_0 + \beta_1 \textrm{RACE}_i + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i
+$$
+Or alternatively:
+$$
+\lambda_i = exp \left( \beta_0 + \beta_1 \textrm{RACE}_i + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i \right)
+$$
+
+The **random part** is (Recall the $\lambda_i$ is both the mean and variance of a Poisson distribution):
+$$
+y_i \sim Poisson(\lambda_i)
+$$
+
+
+Example: Risky Drug Use Behavior
+=================================================
+* Download the "needle_sharing" dataset in csv format
+* Outcome is # times the drug user shared a syringe in the past month (shared_syr)
+* Predictors: sex, ethn, homeless
+
+\small
+```{r}
+needledat = read.csv("needle_sharing.csv")
+needledat2 <- needledat[needledat$sex %in% c("M", "F") & 
+    needledat$ethn %in% c("White", "AA", "Hispanic"), ]
+summary(needledat2$shared_syr)
+var(needledat2$shared_syr, na.rm=TRUE)
+```
+
+Example: Risky Drug Use Behavior
+=================================================
+```{r, echo=FALSE}
+par(mfrow=c(1,2))
+##par(cex=2)
+hist(needledat2$shared_syr, main="")
+plot(sort(needledat2$shared_syr), pch=".")
+```
+
+* There are a _lot_ of zeros and variance is much greater than mean
+    + Poisson model is probably not a good fit
+
+Risky Drug Use Behavior: fitting a Poisson model
+=================================================
+
+```{r, echo=FALSE}
+needledat2$homeless <- factor(needledat2$homeless, levels=0:1, 
+                             labels=c("no", "yes"))
+```
+
+```{r, results='hide', cache=TRUE}
+fit.pois <- glm(shared_syr ~ sex + ethn + homeless, 
+           data=needledat2, family=poisson(link="log"))
+```
+
+Risky Drug Use Behavior: residuals plots
+=================================================
+```{r, echo=FALSE, warning=FALSE}
+par(mfrow=c(2,2))
+plot(fit.pois)
+```
+* Poisson model is definitely not a good fit.
+
+When the Poisson model doesn't fit
+=================================================
+* inference from log-linear models is sensitive to assumptions on the distribution of residuals (e.g. Poisson)
+* In the Poisson distribution, the variance is equal to the mean.
+* _i.e._ if subjects with a particular pattern of covariates have a mean of 4 visits/yr, then variance is also 4 and the standard deviation is 2 visits / yr.
+* The Poisson distribution often fails when the variance exceeds the mean
+    + You can _check_ this assumption      
+* Can use alternative random distributions:
+    + Negative binomial distribution
+* Can introduce zero-inflation
+
+Negative binomial distribution
+=================================================
+* The binomial distribution is the number of successes in n trials:
+    + Roll a die ten times, how many times do you see a 6?
+* The negative binomial distribution is the number of successes it takes to observe r failures:
+    + How many times do you have to roll the die to see a 6 ten times?
+    + Note that the number of rolls is no longer fixed.
+    + In this example, p=5/6 and a 6 is a "failure"
+
+Negative binomial GLM
+=================================================
+
+*One way* to parametrize a NB model is with a **systematic part** equivalent to the Poisson model:
+$$
+log(\lambda_i) = \beta_0 + \beta_1 \textrm{RACE}_i + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i
+$$
+Or:
+$$
+\lambda_i = exp \left( \beta_0 + \beta_1 \textrm{RACE}_i + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i \right)
+$$
+
+And a **random part**:
+$$
+y_i \sim NB(\lambda_i, \theta)
+$$
+
+* $\theta$ is a **dispersion parameter** that is estimated
+* When $\theta = 0$ it is equivalent to Poisson model
+* `MASS::glm.nb()` uses this parametrization, `dnbinom()` does not
+* The Poisson model can be considered **nested** within the Negative Binomial model
+
+Negative Binomial Random Distribution
+=================================================
+```{r, echo=FALSE}
+plot(x=0:40, y=dnbinom(0:40, size=10, prob=0.5), 
+     type="b", lwd=2, ylim=c(0, 0.2),
+     xlab="Counts (k)", ylab="Probability density")
+lines(x=0:40, y=dnbinom(0:40, size=20, prob=0.5), 
+      type="b", lwd=2, lty=2, pch=2)
+lines(x=0:40, y=dnbinom(0:40, size=10, prob=0.3),
+      type="b", lwd=2, lty=3, pch=3)
+legend("topright", lwd=2, lty=1:3, pch=1:3,
+       legend=c("n=10, p=0.5", "n=20, p=0.5", "n=10, p=0.3"))
+```
+
+Compare Poisson vs. Negative Binomial
+=================================================
+Negative Binomial Distribution has two parameters: # of trials n, and probability of success p
+
+```{r, echo=FALSE}
+plot(x=0:40, y=dnbinom(0:40, size=10, prob=0.5), 
+     type="b", lwd=2, ylim=c(0, 0.15),
+     xlab="Counts (k)", ylab="Probability density")
+lines(x=0:40, y=dnbinom(0:40, size=20, prob=0.5), 
+      type="b", lwd=2, lty=2, pch=2)
+lines(x=0:40, y=dnbinom(0:40, size=10, prob=0.3),
+      type="b", lwd=2, lty=3, pch=3)
+lines(x=0:40, y=dpois(0:40, lambda=9), col="red")
+lines(x=0:40, y=dpois(0:40, lambda=20), col="red")
+legend("topright", lwd=c(2,2,2,1), lty=c(1:3,1), pch=c(1:3,-1), col=c(rep("black", 3), "red"),
+       legend=c("n=10, p=0.5", "n=20, p=0.5", "n=10, p=0.3", "Poisson"))
+```
+
+Risky drug behavior: Negative Binomial Regression
+=================================================
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+library(MASS)
+fit.negbin <- glm.nb(shared_syr ~ sex + ethn + homeless, 
+                     data=needledat2)
+summary(fit.negbin)
+```
+
+Likelihood ratio test 
+=================================================
+
+Recall from class 2 the Deviance:
+
+$\Delta (\textrm{D}) = -2 * \Delta (\textrm{log likelihood})$
+
+And recall the difference in deviance under $H_0$ (no improvement in fit) is *chi-square distributed*, with df equal to the difference in df of the two models:
+
+```{r}
+(ll.negbin <- logLik(fit.negbin))
+(ll.pois <- logLik(fit.pois))
+pchisq(2 * (ll.negbin - ll.pois), df=1, lower.tail=FALSE)
+```
+
+
+Risky Drug Use Behavior: NB regression residuals plots
+=================================================
+```{r, echo=FALSE, warning=FALSE}
+par(mfrow=c(2,2))
+plot(fit.negbin)
+```
+
+Zero Inflation
+=================================================
+* Two-step model:
+    1. logistic model to determine whether count is zero or Poisson/NB
+    2. Poisson or NB regression distribution for $y_i$ not set to zero by *1.*
+
+Poisson Distribution with Zero Inflation
+=================================================
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(gamlss)
+##par(cex=2)  #increase size of type and axes
+plot(x=0:10, y=dpois(0:10, lambda=2), 
+     type="b", lwd=2, ylim=c(0, 0.5),
+     xlab="Counts (k)", ylab="Probability density")
+lines(x=0:10, y=dZIP(0:10, mu=2, sigma=0.2),
+      type="b", lwd=2, lty=2, pch=2)
+lines(x=0:10, y=dZIP(0:10, mu=2, sigma=0.4),
+      type="b", lwd=2, lty=3, pch=3)
+legend("topright", lwd=2, lty=1:3, pch=1:3,
+       legend=c(expression(paste(lambda, "=2")),
+                expression(paste("ZIP: ", lambda, "=2, ", Sigma, "=0.2")),
+                expression(paste("ZIP: ", lambda, "=2, ", Sigma, "=0.4"))))
+```
+
+Risky drug behavior: Zero-inflated Poisson regression
+=================================================
+```{r, echo=TRUE, results='hide', message=FALSE, warning=FALSE}
+library(pscl)
+fit.ZIpois <- zeroinfl(shared_syr ~ sex+ethn+homeless, 
+                        dist="poisson",data=needledat2)
+```
+
+Zero-inflated Poisson regression - the model
+=================================================
+```{r}
+summary(fit.ZIpois)
+```
+
+
+Risky drug behavior: Zero-inflated Negative Binomial regression
+=================================================
+```{r, echo=TRUE, results='hide', message=FALSE}
+fit.ZInegbin <- zeroinfl(shared_syr ~ sex+ethn+homeless, 
+                        dist="negbin", data=needledat2)
+```
+
+* *NOTE*: zero-inflation model can include any of your variables as predictors
+* *WARNING* Default in `zerinfl()` function is to use _all_ variables as predictors in logistic model 
+
+Zero-inflated Negative Binomial regression - model 1
+=================================================
+
+\tiny
+```{r}
+summary(fit.ZInegbin)
+```
+
+Zero-inflated Negative Binomial regression - simplified ZI model
+=================================================
+* Model is much more interpretable if the exposure of interest is _not_ included in the zero-inflation model.
+* E.g. with HIV status as the only predictor in zero-inflation model:
+
+```{r, echo=TRUE, results='hide', message=FALSE}
+needledat2$hiv <- factor(ifelse(needledat2$hivstat==0,
+                                "negative","positive"))
+fit.ZInb2<-zeroinfl(shared_syr~sex+ethn+homeless+hiv|hiv, 
+                        dist="negbin", data=needledat2)
+```
+
+Zero-inflated Negative Binomial regression - model 2
+=================================================
+
+\tiny
+```{r}
+summary(fit.ZInb2)
+```
+
+
+Intercept-only zero-inflation model
+=================================================
+
+\tiny
+```{r}
+fit.ZInb3 <- zeroinfl(shared_syr~sex+ethn+homeless|1, 
+                        dist="negbin", data=needledat2)
+summary(fit.ZInb3)
+```
+
+
+Residuals vs. fitted values
+=================================================
+I invisibly define functions plotpanel1 and plotpanel2 that will work for all types of models (see .R or .Rmd file for functions).  These use Pearson residuals.
+```{r, echo=FALSE}
+plotpanel1 <- function(fit, ...){
+  plot(x=predict(fit), y=residuals(fit, type="pearson"), 
+       xlab="Predicted Values", ylab="Pearson Residuals", ...)
+  abline(h=0, lty=3)
+  lines(lowess(x=predict(fit), y=resid(fit, type="pearson")), 
+        col="red")
+}
+plotpanel2 <- function(fit, ...){
+  resids <- scale(residuals(fit, type="pearson"))
+  qqnorm(resids, ylab="Std Pearson resid.", ...)
+  qqline(resids)
+}
+```
+
+```{r, echo=FALSE, warning=FALSE}
+par(mfrow=c(2,2))
+plotpanel1(fit.pois, main="Residuals vs. Fitted\n Poisson")
+plotpanel1(fit.negbin, main="Residuals vs. Fitted\n Negative Binomial")
+plotpanel1(fit.ZIpois, main="Residuals vs. Fitted\n Zero-inflated Poisson")
+plotpanel1(fit.ZInegbin, main="Residuals vs. Fitted\n Zero-inflated Negative Binomial")
+```
+
+
+Quantile-quantile plots for residuals
+=================================================
+```{r, echo=FALSE, warning=FALSE}
+par(mfrow=c(2,2))
+plotpanel2(fit.pois, main="Normal Q-Q Plot\n Poisson")
+plotpanel2(fit.negbin, main="Normal Q-Q Plot\n Negative Binomial")
+plotpanel2(fit.ZIpois, main="Normal Q-Q Plot\n Zero-inflated Poisson")
+plotpanel2(fit.ZInegbin, main="Normal Q-Q Plot\n Zero-inflated Negative Binomial")
+```
+_still_ over-dispersed - ideas?
+
+Inference from the different models
+=================================================
+\tiny
+```{r, echo=FALSE, results="asis", message=FALSE}
+library(stargazer)
+stargazer(fit.pois, fit.negbin, fit.ZIpois, fit.ZInegbin, fit.ZInb3, 
+          title="", type="html",
+          style="default", header=FALSE)
+```
+Zero-inflated models are 3) Poisson, 4) Negative Binomial, and 5) Negative Binomial with intercept-only zero inflation model.
+
+Example of plotting observed and predicted counts
+=================================================
+
+```{r, echo=FALSE}
+observed <- data.frame(table(needledat2$shared_syr))
+fit.lm <- lm(shared_syr~sex+ethn+homeless, data=needledat2)
+pred.lm <- data.frame(table(round(predict(fit.lm))))
+pred.pois <- data.frame(table(round(predict(fit.pois, type="response"))))
+pred.negbin <- data.frame(table(round(predict(fit.negbin, type="response"))))
+pred.ZIpois <- data.frame(table(round(predict(fit.ZIpois, type="response"))))
+pred.ZInegbin <- data.frame(table(round(predict(fit.ZInegbin, type="response"))))
+
+plot(as.numeric(observed[, 1]), observed[, 2], type="l", lwd=2,
+     xlab="Counts", ylab="Frequency")
+lines(as.numeric(pred.pois[, 1]), pred.pois[, 2], lty=2, lwd=2)
+lines(as.numeric(pred.negbin[, 1]), pred.negbin[, 2], lty=3, lwd=2)
+lines(as.numeric(pred.ZInegbin[, 1]), pred.ZInegbin[, 2], lty=4, lwd=2)
+legend("topright", legend=c("Observed", "Poisson", "Negbin", "ZI negbin"),
+       lty=1:4, lwd=2)
+```
+
+Lab exercises
+=================================================
+
+* Perform chi-square nested deviance tests for zero-inflated models
+* Try fitting the needle dataset using a zero-inflated gamma count distribution
+
+Resources for R and SAS
+=================================================
+* Short, practical tutrorials on regression in R and SAS from UCLA at http://www.ats.ucla.edu/stat/:
+    + Poisson Regression: http://www.ats.ucla.edu/stat/r/dae/poissonreg.htm
+    + Negative Binomial: http://www.ats.ucla.edu/stat/r/dae/nbreg.htm
+    + Zero-inflated Poisson: http://www.ats.ucla.edu/stat/r/dae/zipoisson.htm
+    + Zero-inflated Negative Binomial: http://www.ats.ucla.edu/stat/r/dae/zinbreg.htm
+    

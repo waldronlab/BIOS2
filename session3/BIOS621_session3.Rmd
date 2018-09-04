@@ -1,0 +1,320 @@
+---
+title: "BIOS621 Session 3"
+author: "Levi Waldron"
+output: slidy_presentation
+---
+
+Learning objectives - session 3
+========================================================
+
+* fit and interpret interaction terms
+* define and interpret model matrices for (generalized) linear models
+
+Components of GLM
+========================================================
+
+* **Random component** specifies the conditional distribution for the response variable
+    + doesn’t have to be normal
+    + can be any distribution in the "exponential" family of distributions
+* **Systematic component** specifies linear function of predictors (linear predictor)
+* **Link** [denoted by g(.)] specifies the relationship between the expected value of the random component and the systematic component
+    + can be linear or nonlinear  
+
+Logistic Regression as GLM
+========================================================
+
+* **The model**: 
+$$
+Logit(P(x)) = log \left( \frac{P(x)}{1-P(x)} \right) = \beta_0 + \beta_1 x_{1i} + \beta_2 x_{2i} + ... + \beta_p x_{pi}
+$$
+
+* **Random component**: $y_i$ follows a Binomial distribution (outcome is a binary variable)
+
+* **Systematic component**: linear predictor 
+$$
+\beta_0 + \beta_1 x_{1i} + \beta_2 x_{2i} + ... + \beta_p x_{pi}
+$$
+
+* **Link function**: _logit_ (log of the odds that the event occurs)
+
+$$
+g(P(x)) = logit(P(x)) = log\left( \frac{P(x)}{1-P(x)} \right)
+$$
+
+$$
+P(x) = g^{-1}\left( \beta_0 + \beta_1 x_{1i} + \beta_2 x_{2i} + ... + \beta_p x_{pi}
+ \right)
+$$
+
+Additive vs. Multiplicative models
+=================================================
+
+* Linear regression is an _additive_ model
+    + _e.g._ for two binary variables $\beta_1 = 1.5$, $\beta_2 = 1.5$.
+    + If $x_1=1$ and $x_2=1$, this adds 3.0 to $E(y|x)$
+* Logistic regression is a _multiplicative_ model
+    + If $x_1=1$ and $x_2=1$, this adds 3.0 to $log(\frac{P}{1-P})$
+    + Odds-ratio $\frac{P}{1-P}$ increases 20-fold: $exp(1.5+1.5)$ or $exp(1.5) * exp(1.5)$
+
+Motivating example: contraceptive use data
+=================================================
+From http://data.princeton.edu/wws509/datasets/#cuse
+
+```{r, echo=FALSE}
+cuse <- read.table("http://data.princeton.edu/wws509/datasets/cuse.dat", header=TRUE)
+summary(cuse)
+```
+
+Motivating example: contraceptive use data
+=================================================
+
+Univariate regression to "wants more children" only:
+
+\tiny
+```{r}
+fit <- glm(cbind(using, notUsing) ~ wantsMore, 
+           data=cuse, family=binomial("logit"))
+```
+
+```{r, results="asis", echo=FALSE, message=FALSE}
+fit.table <- xtable::xtable(fit, label=NULL)
+print(fit.table, type="html")
+```
+<p></p>
+* Interpretation of this table:
+    * Coefficients for **(Intercept)** and **dummy variables**
+    * Coefficients are normally distributed when assumptions are correct
+
+Interpretation of coefficients
+=================================================
+
+```{r main_coef, fig.cap="Diagram of the estimated coefficients in the GLM. The green arrow indicates the Intercept term, which goes from zero to the mean of the reference group (here the 'wantsMore = no' samples). The orange arrow indicates the difference in log-odds of the yes group minus the no group, which is negative in this example. The circles show the individual samples, jittered horizontally to avoid overplotting.",echo=FALSE}
+logit <- function(P) log(P/(1-P))
+cuse$frac = logit(cuse$using / (cuse$using + cuse$notUsing))
+set.seed(1) #same jitter in stripchart
+stripchart(split(cuse$frac, cuse$wantsMore),
+           main="Additive coefficient interpretation on log-odds scale",
+           ylab="logit(fraction using contraception)", xlab="Wants more children",
+           vertical=TRUE, pch=1, method="jitter", las=2)
+coefs <- coef(fit)##[c("(Intercept)", "wantsMoreyes")]
+a <- -0.15
+lgth <- .1
+library(RColorBrewer)
+cols <- brewer.pal(3,"Dark2")
+abline(h=0)
+arrows(1+a,0,1+a,coefs[1],lwd=3,col=cols[1],length=lgth)
+abline(h=coefs[1],col=cols[1])
+arrows(2+a,coefs[1],2+a,coefs[1]+coefs[2],lwd=3,col=cols[2],length=lgth)
+abline(h=coefs[1]+coefs[2],col=cols[2])
+legend("topright",names(coefs),fill=cols,cex=.75,bg="white")
+```
+
+Regression on **age**
+=================================================
+
+There are four age groups:
+```{r}
+fit <- glm(cbind(using, notUsing) ~ age, 
+           data=cuse, family=binomial("logit"))
+```
+
+```{r, results="asis", echo=FALSE, message=FALSE}
+fit.table <- xtable::xtable(fit, label=NULL)
+print(fit.table, type="html")
+```
+
+- Interpretation of the dummy variables `age25-29`, `age30-39`, `age40-49`
+
+Regression with multiple predictors - model formulae:
+=================================================
+
+symbol  | example | meaning
+------- | ------------ | --------------------------  
++ | + x	| include this variable  
+-	| - x	| delete this variable  
+:	| x : z	| include the interaction  
+*	| x * z	| include these variables and their interactions  
+^	| (u + v + w)^3	| include these variables and all interactions up to three way
+1 | -1 | intercept: delete the intercept  
+
+Regression on **age** and **wantsMore**
+=================================================
+
+```{r}
+fit <- glm(cbind(using, notUsing) ~ age + wantsMore, 
+           data=cuse, family=binomial("logit"))
+```
+
+```{r, results="asis", echo=FALSE, message=FALSE}
+fit.table <- xtable::xtable(fit, label=NULL)
+print(fit.table, type="html")
+```
+
+Interaction / Effect Modification
+=================================================
+
+* What if we want to know whether the effect of age is modified by whether the woman wants more children or not?
+
+Interaction is modeled as the product of two covariates:
+$$
+E[y|x] = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \beta_{12} x_1*x_2
+$$
+
+Interaction / Effect Modification (cont'd)
+============================================
+```{r}
+fit <- glm(cbind(using, notUsing) ~ age * wantsMore, 
+           data=cuse, family=binomial("logit"))
+```
+
+```{r, results="asis", echo=FALSE, message=FALSE}
+fit.table <- xtable::xtable(fit, label=NULL)
+print(fit.table, type="html")
+```
+
+
+The Design Matrix
+=================================================
+
+* Why the design matrix?
+    - There are multiple possible and reasonable regression models for a given study design.
+    - The design matrix is the most generic, flexible way to specify them
+
+The Design Matrix
+=================================================
+
+Matrix notation for the multiple linear regression model:
+
+$$
+\,
+\begin{pmatrix}
+Y_1\\
+Y_2\\
+\vdots\\
+Y_N
+\end{pmatrix} = 
+\begin{pmatrix}
+1&x_1\\
+1&x_2\\
+\vdots\\
+1&x_N
+\end{pmatrix}
+\begin{pmatrix}
+\beta_0\\
+\beta_1
+\end{pmatrix} +
+\begin{pmatrix}
+\varepsilon_1\\
+\varepsilon_2\\
+\vdots\\
+\varepsilon_N
+\end{pmatrix}
+$$
+
+or simply: 
+
+$$
+\mathbf{Y}=\mathbf{X}\boldsymbol{\beta}+\boldsymbol{\varepsilon}
+$$
+
+* The design matrix is $\mathbf{X}$
+    * which the computer will take as a given when solving for $\boldsymbol{\beta}$ by minimizing the sum of squares of residuals $\boldsymbol{\varepsilon}$, or maximizing likelihood.
+    
+
+Choice of design matrix
+=================================================
+    
+* the model formula encodes a default model matrix, e.g.:
+
+```{r}
+group <- factor( c(1, 1, 2, 2) )
+model.matrix(~ group)
+```
+
+Choice of design matrix
+=================================================
+
+What if we forgot to code group as a factor?
+```{r}
+group <- c(1, 1, 2, 2)
+model.matrix(~ group)
+```
+
+More groups, still one variable
+=================================================
+
+```{r}
+group <- factor(c(1,1,2,2,3,3))
+model.matrix(~ group)
+```
+
+Changing the baseline group
+=================================================
+
+```{r}
+group <- factor(c(1,1,2,2,3,3))
+group <- relevel(x=group, ref=3)
+model.matrix(~ group)
+```
+
+More than one variable
+=================================================
+
+```{r}
+agegroup <- factor(c(1,1,1,1,2,2,2,2))
+wantsMore <- factor(c("y","y","n","n","y","y","n","n"))
+model.matrix(~ agegroup + wantsMore)
+```
+
+With an interaction term
+=================================================
+
+```{r}
+model.matrix(~ agegroup + wantsMore + agegroup:wantsMore)
+```
+
+Design matrix to contrast what we want
+=================================================
+
+- Contraceptive use example
+    - Is the effect of wanting more children different for 40-49 year-olds than for <25 year-olds is answered by the term `age40-49:wantsMoreyes` in a model with interaction terms:
+
+```{r}
+fitX <- glm(cbind(using, notUsing) ~ age * wantsMore, 
+           data=cuse, family=binomial("logit"))
+```
+
+```{r, results="asis", echo=FALSE, message=FALSE}
+fit.table <- xtable::xtable(fitX, label=NULL)
+print(fit.table, type="html")
+```
+
+Design matrix to contrast what we want
+=================================================
+
+* What if we want to ask this question for 40-49 year-olds vs. 30-39 year-olds?
+
+The desired contrast is:
+
+`age40-49:wantsMoreyes - age30-39:wantsMoreyes`
+
+There are many ways to construct this design, one is with `library(multcomp)`: 
+```{r}
+names(coef(fitX))
+contmat <- matrix(c(0,0,0,0,0,0,-1,1), 1) 
+new.interaction <- multcomp::glht(fitX, linfct=contmat) 
+summary(new.interaction)
+```
+
+
+Lab Exercises
+=================================================
+
+1. What is the mean fraction of women using birth control for each age group? Each education level? For women who do or don't want more children?
+     - Hint: look at the "data wrangling" cheat sheet functions `mutate`, `group_by`, and `summarize`
+2. Create a fit to the birth control data using all predictors, called ```fit1```. Based on ```fit1```, write on paper the model for expected probability of using birth control.  Don't forget the logit function.
+3. Based on ```fit1```, what is the expected probability of an individual 25-29 years old, with high education, who wants more children, using birth control? Calculate it manually, and using `predict(fit1)`
+4. Based on ```fit1```: Relative to women under 25 who want to have children, what is the predicted increase in odds that a woman 40-49 years old who does _not_ want to have children will be taking birth control?
+5. Using a likelihood ratio test, is there evidence that a model with interactions improves on ```fit1``` (no interactions)?
+6. Which, if any, variables have the strongest interactions?
+7. Create a contrast matrix for a fit on age only, with contrasts between *every pair* of age groups. Between which age groups is the contrast significant?

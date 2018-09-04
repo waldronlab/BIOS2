@@ -1,0 +1,356 @@
+
+---
+title: "Session 11: Distances, SVD, and Principal Components Analysis"
+author: "Levi Waldron"
+output: beamer_presentation
+---
+
+## Session 11 outline
+
+- Distances in high dimensional data
+    + Euclidian distance
+- Singular Value Decomposition
+- Principal Components Analysis
+
+Extra reading: http://genomicsclass.github.io/book/ (Chapter 8)
+
+# Distances in high-dimensional data analysis
+
+## The importance of distance
+
+- High-dimensional data are complex and impossible to visualize in raw form
+- We can only visualize 2-3 dimensions
+- Distances can simplify thousands of dimensions
+
+```{r, out.width = "65%", echo=FALSE}
+knitr::include_graphics("animals.png")
+```
+
+## The importance of distance (cont'd)
+
+- Distances can help organize samples and variables
+
+```{r, echo=FALSE}
+library(GSE5859Subset)
+data(GSE5859Subset) ##this loads three tables
+set.seed(1)
+ge = geneExpression[sample(1:nrow(geneExpression), 200), ]
+pheatmap::pheatmap(ge, scale="row", show_colnames = F, show_rownames = F)
+```
+
+## The importance of distance (cont'd)
+
+- Any clustering or classification of samples and/or genes involves
+combining or identifying objects that are close or similar.
+- Distances or similarities are mathematical representations of what
+we mean by close or similar.
+- The choice of distance is important and requires thought. 
+    - choice is subject-matter specific
+
+<font size="2">
+Source: http://master.bioconductor.org/help/course-materials/2002/Summer02Course/Distance/distance.pdf
+</font>
+
+## Metrics and distances
+
+A **metric** satisfies the following five properties:
+
+1. non-negativity $d(a, b) \ge 0$
+2. symmetry $d(a, b) = d(b, a)$
+3. identification mark $d(a, a) = 0$
+4. definiteness $d(a, b) = 0$ if and only if $a=b$
+5. triangle inequality $d(a, b) + d(b, c) \ge d(a, c)$
+
+- A **distance** is only required to satisfy 1-3.
+- A **similarity function** satisfies 1-2, and **increases** as $a$ and $b$ become more similar
+- A **dissimilarity function** satisfies 1-2, and **decreases** as $a$ and $b$ become more similar
+
+
+## Euclidian distance (metric)
+
+- Remember grade school:
+```{r, echo=FALSE, fig.height=3.5}
+rafalib::mypar()
+plot(c(0,1,1),c(0,0,1),pch=16,cex=2,xaxt="n",yaxt="n",xlab="",ylab="",bty="n",xlim=c(-0.25,1.25),ylim=c(-0.25,1.25))
+lines(c(0,1,1,0),c(0,0,1,0))
+text(0,.2,expression(paste('(A'[x]*',A'[y]*')')),cex=1.5)
+text(1,1.2,expression(paste('(B'[x]*',B'[y]*')')),cex=1.5)
+text(-0.1,0,"A",cex=2)
+text(1.1,1,"B",cex=2)
+```
+<center>
+Euclidean d = $\sqrt{ (A_x-B_x)^2 + (A_y-B_y)^2}$.
+</center>
+
+- **Side note**: also referred to as *$L_2$ norm*
+
+## Euclidian distance in high dimensions
+
+Consider the expression of thousands of genes in hundreds of tissues:
+\footnotesize
+```{r}
+##biocLite("genomicsclass/tissuesGeneExpression")
+library(tissuesGeneExpression)
+data(tissuesGeneExpression)
+dim(e) ##gene expression data
+table(tissue) ##tissue[i] corresponds to e[,i]
+```
+
+
+## Euclidian distance in high dimensions
+
+- Points are no longer on the Cartesian plane,
+- instead they are in higher dimensions. For example:
+    - sample $i$ is defined by a point in 22,215 dimensional space: $(Y_{1,i},\dots,Y_{22215,i})^\top$. 
+    - feature $g$ is defined by a point in 189 dimensions $(Y_{g,189},\dots,Y_{g,189})^\top$
+
+## Euclidian distance in high dimensions
+
+Euclidean distance as for two dimensions. E.g., the distance between two samples $i$ and $j$ is:
+
+$$ \mbox{dist}(i,j) = \sqrt{ \sum_{g=1}^{22215} (Y_{g,i}-Y_{g,j })^2 } $$
+
+and the distance between two features $h$ and $g$ is:
+
+$$ \mbox{dist}(h,g) = \sqrt{ \sum_{i=1}^{189} (Y_{h,i}-Y_{g,i})^2 } $$
+
+## Matrix algebra notation
+
+The distance between samples $i$ and $j$ can be written as:
+
+$$ \mbox{dist}(i,j) = \sqrt{ (\mathbf{Y}_i - \mathbf{Y}_j)^\top(\mathbf{Y}_i - \mathbf{Y}_j) }$$
+
+with $\mathbf{Y}_i$ and $\mathbf{Y}_j$ columns $i$ and $j$. 
+
+## Matrix algebra notation
+
+```{r}
+t(matrix(1:3, ncol=1))
+matrix(1:3, ncol=1)
+t(matrix(1:3, ncol=1)) %*% matrix(1:3, ncol=1)
+```
+
+## 3 sample example
+
+```{r}
+kidney1 <- e[, 1]
+kidney2 <- e[, 2]
+colon1 <- e[, 87]
+sqrt(sum((kidney1 - kidney2)^2))
+sqrt(sum((kidney1 - colon1)^2))
+```
+
+## 3 sample example using dist()
+
+```{r}
+dim(e)
+(d <- dist(t(e[, c(1, 2, 87)])))
+```
+
+## The dist() function
+
+Excerpt from ?dist:
+
+```{r, eval=FALSE}
+dist(x, method = "euclidean", diag = FALSE, 
+     upper = FALSE, p = 2)
+```
+
+- **method:** the distance measure to be used. 
+    - This must be one of "euclidean", "maximum", "manhattan", "canberra", "binary" or "minkowski". Any unambiguous substring can be given.
+- `dist` class output from `dist()` is used for many clustering algorithms and heatmap functions
+
+*Caution*: `dist(e)` creates a `r nrow(e)` x `r nrow(e)` matrix that will probably crash your R session.
+
+## Note on standardization
+
+- In practice, variables are typically "standardized", *i.e.* converted to z-score
+     + This is done to equalize the contributions of each variable to distance
+$$x_{gi} \leftarrow \frac{(x_{gi} - \bar{x}_g)}{s_g}$$
+
+- Note: Euclidian distance and Pearson correlation ($r$) are related:
+    - $\frac{d_E(x, y)^2}{2m} = 1 - r_{xy}$
+
+# Dimension reduction and PCA
+
+## Motivation for dimension reduction
+
+Simulate the heights of twin pairs:
+```{r, echo=FALSE}
+library(MASS)
+set.seed(1)
+n <- 100
+y <- t(MASS::mvrnorm(n, c(0,0), 
+            matrix(c(1, 0.95, 0.95, 1), 2, 2)))
+```
+```{r}
+dim(y)
+cor(t(y))
+```
+
+## Motivation for dimension reduction
+
+```{r, echo=FALSE}
+z1 = (y[1,]+y[2,])/2 #the sum 
+z2 = (y[1,]-y[2,])   #the difference
+
+z = rbind( z1, z2) #matrix now same dimensions as y
+
+thelim <- c(-3,3)
+rafalib::mypar(1,2)
+
+plot(y[1,],y[2,],xlab="Twin 1 (standardized height)",ylab="Twin 2 (standardized height)",xlim=thelim,ylim=thelim,
+     main="Original twin heights")
+points(y[1,1:2],y[2,1:2],col=2,pch=16)
+
+plot(z[1,],z[2,],xlim=thelim,ylim=thelim,xlab="Average height",ylab="Differnece in height",
+     main="Principal Components projection")
+points(z[1,1:2],z[2,1:2],col=2,pch=16)
+```
+
+## Motivation for dimension reduction
+
+<center>
+```{r, echo=FALSE, fig.height=2.75, fig.width=2.75}
+rafalib::mypar()
+d = dist(t(y))
+d3 = dist(z[1,]) * sqrt(2) ##distance computed using just first dimension mypar(1,1)
+plot(as.numeric(d), as.numeric(d3), xlab="Pairwise distances in 2-D", 
+     ylab="Pairwise distances in 1-D")
+abline(0,1, col="red")
+```
+</center>
+- Not much loss of height differences when just using average heights of twin pairs.
+    - because twin heights are highly correlated
+
+## Singular Value Decomposition (SVD)
+
+SVD generalizes the example rotation we looked at:
+
+$$\mathbf{Y} = \mathbf{UDV}^\top$$
+
+```{r, out.width = "50%", echo=FALSE}
+knitr::include_graphics("SVD1.png")
+```
+
+- **note**: the above formulation is for $m > n$
+
+## Singular Value Decomposition (SVD)
+
+```{r, out.width = "50%", echo=FALSE}
+knitr::include_graphics("SVD1.png")
+```
+
+- $\mathbf{Y}$: the m rows x n cols matrix of measurements
+- $\mathbf{U}$: m x n *orthogonal* matrix (**scores**)
+    - orthogonal = unit length and "perpendicular" columns
+- $\mathbf{D}$: n x n diagonal matrix (**eigenvalues**)
+- $\mathbf{V}$: n × n orthogonal matrix (**eigenvectors or loadings**)
+
+## SVD of gene expression dataset
+
+```{r, cache=TRUE}
+e.standardize.fast <- t(scale(t(e), scale=FALSE))
+s <- svd(e.standardize.fast)
+names(s)
+```
+
+## SVD of gene expression dataset
+
+```{r}
+dim(s$u)     # loadings
+length(s$d)  # eigenvalues
+dim(s$v)     # d %*% vT = scores
+```
+
+```{r, out.width = "50%", echo=FALSE}
+knitr::include_graphics("SVD1.png")
+```
+
+## PCA of gene expression dataset
+
+```{r, cache=TRUE}
+p <- princomp(e.standardize.fast)
+```
+
+```{r, fig.height=3, fig.width=3, fig.align='center', echo=FALSE}
+rafalib::mypar()
+plot((s$d^2 / sum(s$d^2) * 100), (p$sdev^2 / sum(p$sdev^2) * 100),
+     xlab="% variance explained (SVD)", ylab="% variance explained (PCA)")
+```
+
+## PCA interpretation: scores
+
+```{r, out.width = "50%", echo=FALSE}
+knitr::include_graphics("SVD1.png")
+```
+
+- $\mathbf{U}$ (**scores**): relate the *PCA* axes to original variables
+    - think of principal component axes as a weighted combination of original axes
+
+## PCA interpretation: scores
+
+```{r, echo=FALSE}
+plot(p$scores[, 1], xlab="Index of genes", ylab="Scores of PC1", 
+     main="Scores of PC1") #or, predict(p)
+abline(h=c(-35, 25), col="red")
+```
+
+## PCA interpretation: scores
+
+Genes with high PC1 scores:
+
+```{r, echo=FALSE, fig.height=3.5}
+e.pc1genes <- e[which(p$scores[, 1] < -35 | p$scores[, 1] > 25), ]
+pheatmap::pheatmap(e.pc1genes, scale="none", show_rownames=FALSE, 
+                  show_colnames = FALSE)
+```
+
+
+## PCA interpretation: eigenvalues
+
+- $\mathbf{D}$ (**eigenvalues**): standard deviation scaling factor that each decomposed variable is multiplied by.
+
+```{r, fig.height=3, fig.width=5, echo=FALSE, fig.align='center'}
+rafalib::mypar()
+plot(p$sdev^2 / sum(p$sdev^2)*100, ylab="% variance explained", main="Screeplot")
+```
+
+## PCA interpretation: eigenvalues
+
+Alternatively as cumulative % variance explained (using `cumsum()` function):
+```{r, fig.height=4, echo=FALSE, fig.align='center'}
+rafalib::mypar()
+plot(cumsum(p$sdev^2)/sum(p$sdev^2)*100, 
+  ylab="cumulative % variance explained", ylim=c(0, 100), 
+  type="l", main="Cumulative screeplot")
+```
+
+## PCA interpretation: loadings
+
+```{r, out.width = "50%", echo=FALSE}
+knitr::include_graphics("SVD1.png")
+```
+
+- $\mathbf{V}$ (**loadings**): The "datapoints" in the reduced prinipal component space
+
+## PCA interpretation: loadings
+
+```{r, fig.height=5, echo=FALSE}
+rafalib::mypar()
+plot(p$loadings[, 1:2], xlab="PC1", ylab="PC2", 
+     main="plot of p$loadings[, 1:2]",
+     col=factor(tissue), pch=as.integer(factor(tissue)))
+legend("topleft", legend=levels(factor(tissue)), col=1:length(unique(tissue)),
+       pch=1:length(unique(tissue)), bty='n')
+```
+
+
+## Conclusions
+
+- **Note**: signs of eigenvalues (square to get variances) and eigenvectors (loadings) can be arbitrarily flipped
+- PCA is useful for dimension reduction when you have *correlated* variables
+- Variables are always centered.  
+- Variables are also scaled unless you know they have the same scale in the population
+- PCA projection can be applied to new datasets if you know the matrix calculations
+- PCA is subject to over-fitting, screeplot can be tested by cross-validation

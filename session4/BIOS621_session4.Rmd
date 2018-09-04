@@ -1,0 +1,312 @@
+---
+title: "BIOS621 Session 4 - loglinear regression part 1"
+author: "Levi Waldron"
+output: beamer_presentation
+---
+
+Welcome and outline - session 4
+========================================================
+
+* brief review of GLMs
+* Motivating example for log-linear models
+    + Poisson regression
+* Checking model assumptions and fit: Residual Analysis
+* Note on collinearity
+
+Reading: Vittinghoff textbook chapter 8.1-8.3
+
+Learning Objectives
+========================================================
+
+* Define log-linear models in GLM framework
+* Identify situations that motivate use of log-linear models
+* Assess model fit of log-linear models
+* Define multi-collinearity
+
+Components of GLM
+========================================================
+
+* **Random component** specifies the conditional distribution for the response variable - it doesn’t have to be normal but can be any distribution that belongs to the “exponential” family of distributions
+* **Systematic component** specifies linear function of predictors (linear predictor)
+* **Link** [denoted by g(.)] specifies the relationship between the expected value of the random component and the systematic component, can be linear or nonlinear  
+
+Linear Regression as GLM
+========================================================
+
+* **The model**: $y_i = E[y|x] + \epsilon_i = \beta_0 + \beta_1 x_{1i} + \beta_2 x_{2i} + ... + \beta_p x_{pi} + \epsilon_i$
+
+* **Random component** of $y_i$ is normally distributed:   $\epsilon_i \stackrel{iid}{\sim} N(0, \sigma_\epsilon^2)$
+
+* **Systematic component** (linear predictor): $\beta_0 + \beta_1 x_{1i} + \beta_2 x_{2i} + ... + \beta_p x_{pi}$
+
+* **Link function** here is the _identity link_: $g(E(y | x)) = E(y | x)$.  We are modeling the mean directly, no transformation.
+
+Logistic Regression as GLM
+========================================================
+
+* **The model**: 
+$$
+Logit(P(x)) = log \left( \frac{P(x)}{1-P(x)} \right) = \beta_0 + \beta_1 x_{1i} + \beta_2 x_{2i} + ... + \beta_p x_{pi}
+$$
+
+* **Random component**: $y_i$ follows a Binomial distribution (outcome is a binary variable)
+
+* **Systematic component**: linear predictor 
+$$
+\beta_0 + \beta_1 x_{1i} + \beta_2 x_{2i} + ... + \beta_p x_{pi}
+$$
+
+* **Link function**: _logit_ (log of the odds that the event occurs)
+
+$$
+g(P(x)) = logit(P(x)) = log\left( \frac{P(x)}{1-P(x)} \right)
+$$
+
+$$
+P(x) = g^{-1}\left( \beta_0 + \beta_1 x_{1i} + \beta_2 x_{2i} + ... + \beta_p x_{pi}
+ \right)
+$$
+
+
+Additive vs. Multiplicative models
+=================================================
+
+* Linear regression is an _additive_ model
+    + _e.g._ for two binary variables $\beta_1 = 1.5$, $\beta_2 = 1.5$.
+    + If $x_1=1$ and $x_2=1$, this adds 3.0 to $E(y|x)$
+* Logistic regression is a _multiplicative_ model
+    + If $x_1=1$ and $x_2=1$, this adds 3.0 to $log(\frac{P}{1-P})$
+    + Odds-ratio $\frac{P}{1-P}$ increases 20-fold: $exp(1.5+1.5)$ or $exp(1.5) * exp(1.5)$
+
+Motivating example for log-linear models  
+=================================================
+* Effectiveness of a new case-management program for depression
+    + can the new treatment reduce the number of needed visits to the emergency room, compared to standard care?
+* *outcome*: # of emergency room visits for each patient in the year following initial treatment
+* *predictors*: *race* (white or nonwhite), *treatment* (treated or control), *amount of alcohol consumption* (numerical measure), *drug use* (numerical measure)
+   
+Motivating example (cont'd)
+=================================================
+* Statistical issues:
+     + about 1/3 of observations are exactly 0 (did not return to the emergency room within the year)
+     + highly nonnormal and cannot be transformed to be approximately normal
+     + even $log(y_i + 1)$ transformation will have a "lump" at zero
+        + over 1/2 the transformed data would have values of 0 or $log(2)$
+     + a linear regression model would give negative predictions for some covariate combinations
+     + some subjects die or cannot be followed up on for a whole year
+
+Motivating example (cont'd)
+=================================================
+* A _multiplicative_ model will allow us to make inference on _ratios_ of mean emergency room usage
+* Modeling $log$ of the _mean_ emergency usage ensures positive means, and does not suffer from $log(0)$ problem
+* Random component of GLM, or residuals (was $\epsilon_i \stackrel{iid}{\sim} N(0, \sigma_\epsilon^2)$ for linear regression) may still not be normal, but we can choose from other distributions
+
+Motivating example: proposed model without time
+=================================================
+
+$$
+log(E[Y_i]) = \beta_0 + \beta_1 \textrm{RACE}_i + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i
+$$
+Or equivalently:
+$$
+E[Y_i] = exp \left( \beta_0 + \beta_1 \textrm{RACE}_i + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i \right)
+$$
+where $E[Y_i]$ is the expected number of emergency room visits for patient _i_.
+
+* Important note: Modeling $log(E[Y_i])$ is _not_ equivalent to modeling $E(log(Y_i))$
+
+Motivating example: accounting for time of follow-up
+=================================================
+Instead, model mean count per unit time:
+$$
+log(E[Y_i]/t_i) = \beta_0 + \beta_1 \textrm{RACE}_i + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i
+$$
+Or equivalently:
+$$
+log(E[Y_i]) = \beta_0 + \beta_1 \textrm{RACE}_i + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i + log(t_i)
+$$
+
+* $log(t_i)$ is not a covariate, it is called an _offset_
+
+Motivating example: Choice of Distribution
+=================================================
+* Count data are often modeled as Poisson distributed:
+       + mean $\lambda$ is greater than 0
+       + variance is also $\lambda$
+       + Probability density $P(k, \lambda) = \frac{\lambda^k}{k!} e^{-\lambda}$
+       
+```{r, echo=FALSE}
+par(cex=2)  #increase size of type and axes
+plot(x=0:10, y=dpois(0:10, lambda=1), 
+     type="b", lwd=2,
+     xlab="Counts (k)", ylab="Probability density")
+lines(x=0:10, y=dpois(0:10, lambda=2), 
+      type="b", lwd=2, lty=2, pch=2)
+lines(x=0:10, dpois(0:10, lambda=4), 
+      type="b", lwd=2, lty=3, pch=3)
+legend("topright", lwd=2, lty=1:3, pch=1:3,
+       legend=c(expression(paste(lambda, "=1")),
+                expression(paste(lambda, "=2")),
+                expression(paste(lambda, "=4"))))
+```
+
+Motivating example: the Poisson GLM
+=================================================
+* Model the number of counts per unit time as Poisson-distributed
+       + so the expected number of counts per time is $\lambda_i$
+       
+$E[Y_i]/t_i = \lambda_i$ \newline
+$log(E[Y_i]/t_i) = log(\lambda_i)$ \newline
+$log(E[Y_i]) = log(\lambda_i) + log(t_i)$ \newline
+
+
+Recalling the log-linear model systematic component:
+$$log(E[Y_i]) = \beta_0 + \beta_1 \textrm{RACE}_i + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i + log(t_i)$$
+
+Motivating example: the Poisson GLM
+=================================================
+
+Then the systematic part of the GLM is:
+$$
+log(\lambda_i) = \beta_0 + \beta_1 \textrm{RACE}_i + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i
+$$
+Or alternatively:
+$$
+\lambda_i = exp \left( \beta_0 + \beta_1 \textrm{RACE}_i + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i \right)
+$$
+
+Motivating example: interpretation of coefficients
+=================================================
+* Suppose that $\hat \beta_1 = -0.5$ in the fitted model, where $\textrm{RACE}_i=0$ for white and $\textrm{RACE}_i=1$ for non-white. 
+* The mean rate of emergency room visits per unit time for white relative to non-white, all else held equal, is estimated to be:
+
+$$
+\frac{exp \left( \beta_0 + 0 + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i \right)}{exp \left( \beta_0 - 0.5 + \beta_2 \textrm{TRT}_i + \beta_3 \textrm{ALCH}_i + \beta_4 \textrm{DRUG}_i \right)}
+$$
+$$
+= \frac{e^{\beta_0} e^0 e^{\beta_2 \textrm{TRT}_i} e^{\beta_3 \textrm{ALCH}_i} e^{\beta_4 \textrm{DRUG}_i}}
+{e^{\beta_0} e^{-0.5} e^{\beta_2 \textrm{TRT}_i} e^{\beta_3 \textrm{ALCH}_i} e^{\beta_4 \textrm{DRUG}_i}}
+$$
+$$
+= \frac{e^0}{e^{-0.5}}
+$$
+$$
+= e^{0.5} \approxeq 1.65
+$$
+
+Motivating example: interpretation of coefficients
+=================================================
+* If $\hat \beta_1=-0.5$ with whites as the reference group:
+       - after adjustment for treatment group, alcohol and drug usage, whites tend to use the emergency room at a rate 1.65 times higher than non-whites.
+       - equivalently, the average rate of usage for whites is 65% higher than that for non-whites
+* Multiplicative rules apply for other coefficients as well, because they are exponentiated to estimate the mean rate.
+
+Example by simulation
+=================================================
+```{r, echo=FALSE}
+set.seed(1)
+```
+\tiny
+```{r}
+simdat <- data.frame(race=sample(c("white", "non-white"), size=10000, replace=TRUE))
+simdat$race <- factor(simdat$race, levels=c("white", "non-white"))
+simdat$y <- rpois(10000, lambda=ifelse(simdat$race=="white", exp(3.5), exp(3)))
+fit <- glm(y ~ race, data=simdat, family=poisson("log"))
+summary(fit)
+```
+
+Inference on deviance residuals
+=================================================
+```{r, echo=FALSE, results='hide'}
+(df <- fit$df.residual) #residual degrees of freedom
+(res.dev <- sum(fit$deviance))  #total residual deviance
+```
+* The difference in total deviance between two nested models is $\chi^2$ distributed under $H_0$ that the more complex model is no better at explaining the response.
+     + The difference in deviance residuals is (26157 - 10111) = 16046, with a difference of 1 degrees of freedom.
+
+The critical threshold for rejection at p=0.05 is:
+```{r}
+qchisq(0.95, df=1)
+```
+
+So we reject $H_0$
+
+Inference on deviance residuals 2
+=================================================
+
+* Total residual deviance is $\chi^2$ distributed if the model is correctly specified
+     + What is the critical value for rejecting $H_0$ at $p < 0.05$ with a $\chi^2$ distribution of 9998 degrees of freedom?
+```{r}
+qchisq(0.95, df=9998)
+```
+
+Here total residual deviance is 10111, so we do *not* exceed the threshold and do not reject $H_0$ that the model is correctly specified.
+
+Example by simulation: Deviance Residuals Plots
+=================================================
+```{r, echo=FALSE}
+par(mfrow=c(2,2))
+plot(fit)
+```
+
+Example: Risky Drug Use Behavior
+=================================================
+* Load the "needle_sharing" dataset is available csv format
+* Outcome is # times the drug user shared a syringe in the past month (shared_syr)
+* Predictors: sex, ethn, homeless
+
+\small
+```{r}
+needledat = read.csv("needle_sharing.csv")
+summary(needledat$shared_syr)
+var(needledat$shared_syr, na.rm=TRUE)
+```
+
+Example: Risky Drug Use Behavior
+=================================================
+```{r, echo=FALSE}
+par(mfrow=c(1,2), cex=2)
+hist(needledat$shared_syr, main="")
+plot(sort(needledat$shared_syr), pch=".")
+```
+
+* There are a _lot_ of zeros - Poisson model is not a good fit
+
+Risky Drug Use Behavior: fitting a Poisson model
+=================================================
+
+```{r, echo=FALSE}
+needledat$homeless <- factor(needledat$homeless, levels=0:1, 
+                             labels=c("no", "yes"))
+```
+
+\tiny
+```{r, echo=FALSE}
+fit.pois <- glm(shared_syr ~ sex + ethn + homeless, 
+           data=needledat, family=poisson(link="log"))
+summary(fit.pois)
+```
+
+Risky Drug Use Behavior: residuals plots
+=================================================
+```{r, echo=FALSE, warning=FALSE}
+par(mfrow=c(2,2))
+plot(fit.pois)
+```
+
+Multicollinearity
+=================================================
+
+* *Multicollinearity* exists when two or more of the independent variables in regression are moderately or highly correlated.
+* Multicollinearity implies near-linear relationship among the predictors
+* The presence of near-linear dependence dramatically impacts the ability to estimate regression coefficients
+* High multicollinearity results in larger standard errors for regression coefficients
+    + estimates of such regression coefficients will tend to be less stable over repeated sampling
+    
+Concluding notes
+=================================================
+* Inference from log-linear models is sensitive to the choice of link function  (assumption on distribution of residuals)
+* We will cover other options next week for when the Poisson model doesn't fit:
+    + Variance proportional to mean, instead of equal
+    + Negative Binomial
+    + Zero Inflation
