@@ -123,6 +123,12 @@ plot(invLogit, xlim=c(-6, 6), cex.lab=1.5, cex.axis=1.5,
      xlab="Log-odds", ylab="Probability")
 ```
 
+Assumptions in logistic regression
+=================================================
+1. `y_i` follows a Binomial distribution.
+2. The mean `E(y|x) = P(x)` is given by the logit function.
+3. Values of the outcome are statistically independent.
+
 Additive vs. Multiplicative models
 =================================================
 
@@ -161,7 +167,7 @@ Take the difference between observed and fitted values (on probability scale 0-1
 * $y_i$ is the observed value, either 0 or 1.
 
 $$
-r_i = \frac{y_i - \hat y_i}{ \sqrt{ Var(\hat y_i) }}
+r_i = \frac{y_i - \hat y_i}{ \sqrt{ \frac{\hat y_i(n_i - \hat y_i)}{n_i} }}
 $$
 
 Summing the squared Pearson residuals produces the _Pearson Chi-squared statistic_:
@@ -216,8 +222,8 @@ Wald test for individual regression coefficients
 =================================================
 
 * Can use partial Wald test for a single coefficient: 
-    + $\frac{\hat{\beta}}{\sqrt{var(\hat{\beta)}}} \sim t_{n-1}$
-    + $\frac{\left ( \hat{\beta} - \beta_0 \right )^2 }{var(\hat{\beta)}} \sim   \chi^2_{df=1}$ (large sample)
+    + $\frac{\hat{\beta}}{\sqrt{var(\hat{\beta)}}} \sim N(0, 1)$
+    + $\frac{\hat{\beta}^2 }{var(\hat{\beta)}} \sim   \chi^2_{df=1}$ (large sample)
 * Wald CI for $\beta$: $\hat{\beta} \pm t_{1-\alpha/2, n-1} \sqrt{var(\hat{\beta})}$
 * Wald CI for odds-ratio: $e^{\hat{\beta} \pm t_{1-\alpha/2, n-1} \sqrt{var(\hat{\beta})}}$
 
