@@ -1,7 +1,6 @@
 ---
 title: "BIOS621 sessions 2-3 lab exercises"
 author: "Levi Waldron"
-date: "September 7-14, 2016"
 output: 
   html_document: 
     toc: yes
