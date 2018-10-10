@@ -215,7 +215,7 @@ fit <- glm(y ~ race, data=simdat, family=poisson("log"))
 summary(fit)
 ```
 
-Inference on deviance residuals
+Inference on deviance residuals 1: compare nested models
 =================================================
 ```{r, echo=FALSE, results='hide'}
 (df <- fit$df.residual) #residual degrees of freedom
@@ -231,7 +231,7 @@ qchisq(0.95, df=1)
 
 So we reject $H_0$
 
-Inference on deviance residuals 2
+Inference on deviance residuals 2: test for fit
 =================================================
 
 * Total residual deviance is $\chi^2$ distributed if the model is correctly specified
