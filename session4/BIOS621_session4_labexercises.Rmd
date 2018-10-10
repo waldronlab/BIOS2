@@ -1,0 +1,31 @@
+---
+title: "BIOS621 Session 4 - loglinear regression part 1 lab"
+author: "Levi Waldron"
+output: 
+  html_document: 
+    number_sections: yes
+---
+
+# Load the needle sharing dataset into R
+
+# Calculate the percentage of zero values for the response variable `shared_syr`
+
+# Calculate the mean and variance of `shared_syr`
+
+# Re-code variables as (ordered) factors where appropriate
+
+Factors include sex, ethn, age, dprsn_dx, sexabuse, hivstat, hplsns, nivdu, shsyryn, shsyryn, polydrug, homeless
+
+# Which of the variables are collinear?
+
+Use the `table()` function to identify any collinear predictors. 
+
+# Fit a multivariate log-linear model with Poisson error term
+
+Fit a multivariate model with shared_syr as the outcome, with sex, ethn, age, dprsn_dx, sexabuse, hivstat, hplsns, homeless as predictors.
+
+# Model selection
+
+Identifying the best-fitting multivariate model using the `stepAIC` function from the `MASS` package. Do this using complete cases only (imputation is another option, which we aren't covering).
+
+
