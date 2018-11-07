@@ -26,16 +26,6 @@ output: beamer_presentation
 
 This is the **Kaplan-Meier Estimate** $\hat S(t)$ of the Survival function $S(t)$.
 
-# Leukemia Kaplan-Meier plot
-
-```{r, echo=FALSE, message=FALSE}
-leuk <- read.csv("leuk.csv")
-library(survival)
-kmfit <- survfit(Surv(time, cens)~group, data=leuk)
-library(survminer)
-ggsurvplot(kmfit, risk.table = TRUE, linetype=1:2)
-``````
-
 # The hazard function h(t)
 
 * *Definition*: (review) The *survival function* at time t, denoted $S(t)$, is the probability of being event-free at t.  Equivalently, it is the probability that the survival time is greater than t.
@@ -46,15 +36,18 @@ ggsurvplot(kmfit, risk.table = TRUE, linetype=1:2)
     + $h(t)$ is the probability of an event in the time interval $[t, t+s]$ (s is small), given that the individual has survived up to time t
 $$h(t) = \lim_{s \to 0} \frac{Pr(t \leq T < t+s | T \ge t)}{s}$$
 
+# Leukemia Kaplan-Meier plot
+
+```{r, echo=FALSE, message=FALSE}
+leuk <- read.csv("leuk.csv")
+library(survival)
+kmfit <- survival::survfit(Surv(time, cens)~group, data=leuk)
+library(survminer)
+survminer::ggsurvplot(kmfit, risk.table = TRUE, linetype=1:2)
+``````
 
 # The hazard function h(t) (leukemia dataset)
-
 ```{r, echo=FALSE}
-par(mfrow=c(1,2))
-## KM plot
-source("http://biostat.mc.vanderbilt.edu/wiki/pub/Main/TatsukiRcode/TatsukiRcodeKMplot.r")
-kmplot(kmfit, lty.surv=1:2, col.surv=2:1, xlab="Time (weeks)", ylab="Survival Probability")
-## hazard plot
 library(muhaz)
 haztreat = with(leuk[leuk$group=="6 MP", ], muhaz(time, cens))
 hazcontrol = with(leuk[leuk$group=="Placebo", ], muhaz(time, cens))
@@ -71,40 +64,6 @@ legend("topright", legend=c("Control", "Treatment"), lty=1:2, lwd=2, col=c("blac
 * If we are comparing the hazards of a control and a treatment group, it could in general be a function of time:
     + $HR(t) = h_T(t) / h_C(t)$
 * Interpretation: the risk of event for the treatment group compared to the control group, as a function of time
-
-# The Proportional Hazards Assumption
-
-* *Definition*: Under the *proportional hazards assumption*, the hazard ratio does not vary with time. That is, $HR(t) \equiv HR$.
-
-* In other words, $HR$ does not vary with time
-    + $HR(t)$ is a constant, $HR$, at *all times* t
-    + this assumption is about the population, of course there will be sampling variation
-
-# A nice proportional hazards dataset
-
-![Vittinghoff Figure 6.3, p. 210](vittinghofffig63.png)
-
-# The hazard function h(t) (leukemia dataset)
-
-```{r, echo=FALSE}
-par(mfrow=c(1,2))
-## KM plot
-kmplot(kmfit, lty.surv=1:2, col.surv=2:1, xlab="Time (weeks)", ylab="Survival Probability")
-## hazard plot
-library(muhaz)
-haztreat = with(leuk[leuk$group=="6 MP", ], muhaz(time, cens))
-hazcontrol = with(leuk[leuk$group=="Placebo", ], muhaz(time, cens))
-plot(hazcontrol, lwd=2, xlab="Follow-up time (weeks)", xlim=c(0, 18))
-lines(haztreat, lty=2, lwd=2, col="red")
-legend("topright", legend=c("Control", "Treatment"), lty=1:2, lwd=2, col=c("black", "red"))
-```
-
-# Log-minus-log plot
-
-```{r, echo=FALSE}
-ggsurvplot(kmfit, fun="cloglog", risk.table = FALSE, linetype=1:2,
-           main="log-minus-log plot for Leukemia dataset")
-```
 
 # Recall previous regression models
 
@@ -169,6 +128,32 @@ coxfit <- coxph(Surv(time, cens)~group, data=leuk)
 summary(coxfit)
 ```
 
+# The Proportional Hazards Assumption
+
+* *Definition*: Under the *proportional hazards assumption*, the hazard ratio does not vary with time. That is, $HR(t) \equiv HR$.
+
+* In other words, $HR$ does not vary with time
+    + $HR(t)$ is a constant, $HR$, at *all times* t
+    + this assumption is about the population, of course there will be sampling variation
+
+# A nice proportional hazards dataset
+
+![Vittinghoff Figure 6.3, p. 210](vittinghofffig63.png)
+
+# Log-minus-log plot
+
+```{r, echo=FALSE}
+ggsurvplot(kmfit, fun="cloglog", risk.table = FALSE, linetype=1:2,
+           main="log-minus-log plot for Leukemia dataset")
+```
+
+# Assumptions of Cox PH model
+
+* Constant hazard ratio over time (proportional hazards)
+* A linear association between the natural log of the relative hazard and the predictors (log-linearity)
+    + A multiplicative relationship between the predictors and the hazard
+* Uninformative censoring
+
 # Parametric versus semi-parametric models
 
 * Cox proportional hazards model is semi-parametric
@@ -179,13 +164,6 @@ summary(coxfit)
 * Cox model is considered more robust if PH assumption is not violated
     + time-dependent covariates may resolve apparent violations of the PH assumption.
 
-
-# Summary: assumptions of Cox PH model
-
-* Constant hazard ratio over time (proportional hazards)
-* A linear association between the natural log of the relative hazard and the predictors (log-linearity)
-    + A multiplicative relationship between the predictors and the hazard
-* Uninformative censoring
 
 # Next class
 * Vittinghoff sections 6.2-6.4
