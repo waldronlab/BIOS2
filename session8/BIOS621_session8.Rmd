@@ -82,8 +82,10 @@ summary(mydat)
 ```{r, echo=FALSE}
 ##Do Kaplan-Meier plot
 par(cex=1.5)
-library(survival)
-library(survminer)
+suppressPackageStartupMessages({
+  library(survival)
+  library(survminer)
+})
 kmfit <- survfit(Surv(time, cens)~Var1, data=mydat)
 ggsurvplot(kmfit, risk.table = TRUE, linetype=1:2)
 ```
@@ -191,8 +193,7 @@ pbc.os$stage <- factor(pbc.os$stage)
 par(cex=1.5)
 library(survival)
 fit <- survfit(Surv(time/365, os) ~ arm, data=pbc.os)
-survminer::ggsurvplot(fit)
-ggsurvplot(fit, risk.table = TRUE, linetype=1:2)
+survminer::ggsurvplot(fit, risk.table = TRUE, linetype=1:2)
 ```
 
 
@@ -340,4 +341,17 @@ summary(mycox)
 * Levesque *et al.* Problem of immortal time bias in cohort studies: example using statins for preventing progression of diabetes (https://doi.org/10.1136/bmj.b5087)
 
 
+# Lab exercises
 
+Use the **PBC** dataset for these exercises.
+
+1. Does the dataset actually contain `n=424` patients as stated above?
+2. For how many patients is there complete data for `time`, `status`, and `trt`?
+3. Which variables are categorical, and which are continuous?
+4. Make a Kaplan-Meier plot for overall survival, stratified by the `trt` variable. 
+5. Fit univariate Cox models for each available covariate, using a loop. Which have significant p-values (you can ignore multiple testing for now)?
+6. Fit a multivariate Cox model with `trt` and `spiders` as covariates. 
+     a. Interpret the coefficients and p-values from this multivariate model. 
+     b. Create a log-minus-log plots for `treatment+spiders` model. At what times, if any, does it look like there might be any violation of the proportional hazards assumption?
+7. Fit a Cox model with `trt` as a covariate while stratifying by `spiders`. Does this stratification make any relevant difference?
+8. Suppose it is hypothesized that the treatment effect is time-dependent, and changes at 5 years. Create a time-dependent covariate that is a step function at 5 years, and test this hypothesis by using an interaction term between the new time-dependent covariate and the `trt` variable, with these two covariates plus `spiders`, in the model.
