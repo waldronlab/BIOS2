@@ -297,3 +297,13 @@ where $SUBJECT_i \stackrel{iid}{\sim} N(0, \sigma_{subj}^2)$
      - not always "conservative"
 * Intraclass Correlation (ICC) provides a measure of correlation induced by grouping
 * Should be able to recognize fixed and random effects
+
+# Lab
+
+1. Load the fecal fat dataset
+2. Produce summary statistics for the dataset
+3. Create a boxplot for fecal fat vs. treatment type
+4. Create a spaghetti plots for fecal fat vs. treatment type, with and without subject means subtracted
+5. Fit a linear model with random coefficients for pills, and summarize the output
+6. Create residuals plots for this model and interpret
+7. Calculate the ICC
