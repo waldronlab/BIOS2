@@ -366,5 +366,9 @@ summary(gafit.gee)
     
 # Lab exercise
 
-* Continue the MLM_R.pdf lab from session 9
-* Fit population average models using several different working correlation structures, and compare the results to each other and to the mixed model
+For the fecal fat dataset:
+1. Fit a linear model with random coefficients for pills, and summarize the output
+2. Estimate confidence intervals for the coefficients of this model, and interpret them
+3. Calculate the ICC
+4. Create residuals plots for this model and interpret
+5. Fit population average models for the fecal fat dataset using at least two different working correlation structures. Compare the results to each other and to the mixed model
