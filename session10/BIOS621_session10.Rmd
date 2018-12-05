@@ -180,7 +180,9 @@ summary(fitmix)
 ```
 \normalsize
 
-* Note: correlation of the estimator of the fixed effects
+# Mixed effects model results (cont'd)
+
+* Note on correlation of the estimator of the fixed effects
     + high correlations may (but not necessarily) be due to collinearity
     + not usually useful, not included in output of some packages
 
@@ -326,7 +328,7 @@ summary(gafit.gee)
 
 # GEE working correlation types
 
-* Must make some assumption about form correlation among observations from the same subject, same hospital, etc
+* Must make some assumption about form of correlation among observations from the same subject, same hospital, etc
 
 * Independence
     - no correlation between measurements within group
